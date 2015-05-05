@@ -9,19 +9,35 @@
 #define mozilla_layers_FenceUtilsGonk_h
 
 #include <unistd.h>
-#include <ui/Fence.h>
-
+#include "mozilla/RefPtr.h"    // for RefPtr
 #include "ipc/IPCMessageUtils.h"
 
 namespace mozilla {
 namespace layers {
 
-struct FenceHandle {
-  typedef android::Fence Fence;
+class FdObj {
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(FdObj)
+  friend class FenceHandle;
+public:
+  FdObj()
+    : mFd(-1) {}
+  FdObj(int aFd)
+    : mFd(aFd) {}
+  virtual ~FdObj() {
+    if (mFd != -1) {
+      close(mFd);
+    }
+  }
 
+private:
+  int mFd;
+};
+
+struct FenceHandle {
+public:
   FenceHandle();
 
-  explicit FenceHandle(const android::sp<Fence>& aFence);
+  FenceHandle(int aFenceFd);
 
   bool operator==(const FenceHandle& aOther) const {
     return mFence.get() == aOther.mFence.get();
@@ -29,12 +45,17 @@ struct FenceHandle {
 
   bool IsValid() const
   {
-    return mFence.get() && mFence->isValid();
+    return (mFence->mFd != -1);
   }
 
   void Merge(const FenceHandle& aFenceHandle);
 
-  android::sp<Fence> mFence;
+  int GetAndResetFd();
+
+  int GetDupFd();
+
+private:
+  RefPtr<FdObj> mFence;
 };
 
 } // namespace layers

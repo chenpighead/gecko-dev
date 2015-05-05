@@ -27,6 +27,8 @@ struct FenceHandle {
   bool operator==(const FenceHandle&) const { return false; }
   bool IsValid() const { return false; }
   void Merge(const FenceHandle& aFenceHandle) {}
+  int GetAndResetFd() { return -1; }
+  int GetDupFd() { return -1; }
 };
 
 struct FenceHandleFromChild {
