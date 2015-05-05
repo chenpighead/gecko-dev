@@ -790,16 +790,9 @@ MediaCodecReader::TextureClientRecycleCallback(TextureClient* aClient)
       return;
     }
 
-#if MOZ_WIDGET_GONK && ANDROID_VERSION >= 17
-    sp<Fence> fence = aClient->GetReleaseFenceHandle().mFence;
-    if (fence.get() && fence->isValid()) {
-      mPendingReleaseItems.AppendElement(ReleaseItem(index, fence));
-    } else {
-      mPendingReleaseItems.AppendElement(ReleaseItem(index, nullptr));
-    }
-#else
-    mPendingReleaseItems.AppendElement(ReleaseItem(index));
-#endif
+    FenceHandle handle = aClient->GetAndResetReleaseFenceHandle();
+    mPendingReleaseItems.AppendElement(ReleaseItem(index, handle));
+
     mTextureClientIndexes.Remove(aClient);
   }
 
@@ -822,13 +815,10 @@ MediaCodecReader::WaitFenceAndReleaseOutputBuffer()
   }
 
   for (size_t i = 0; i < releasingItems.Length(); i++) {
-#if MOZ_WIDGET_GONK && ANDROID_VERSION >= 17
-    sp<Fence> fence;
-    fence = releasingItems[i].mReleaseFence;
-    if (fence.get() && fence->isValid()) {
+    if (releasingItems[i].mReleaseFence.IsValid()) {
+      sp<Fence> fence = new Fence(releasingItems[i].mReleaseFence.GetAndResetFd());
       fence->waitForever("MediaCodecReader");
     }
-#endif
     if (mVideoTrack.mCodec != nullptr) {
       mVideoTrack.mCodec->releaseOutputBuffer(releasingItems[i].mReleaseIndex);
     }
