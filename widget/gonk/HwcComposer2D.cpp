@@ -117,10 +117,6 @@ HwcComposer2D::HwcComposer2D()
     , mMaxLayerCount(0)
     , mColorFill(false)
     , mRBSwapSupport(false)
-#if ANDROID_VERSION >= 17
-    , mPrevRetireFence(Fence::NO_FENCE)
-    , mPrevDisplayFence(Fence::NO_FENCE)
-#endif
     , mPrepared(false)
     , mHasHWVsync(false)
     , mLock("mozilla.HwcComposer2D.mLock")
@@ -857,22 +853,21 @@ HwcComposer2D::Commit()
         if (!texture) {
             continue;
         }
-        sp<Fence> fence = texture->GetAndResetAcquireFence();
-        if (fence.get() && fence->isValid()) {
-            mList->hwLayers[j].acquireFenceFd = fence->dup();
+        FenceHandle fence = texture->GetAndResetAcquireFence();
+        if (fence.IsValid()) {
+            mList->hwLayers[j].acquireFenceFd = fence.GetAndResetFd();
         }
     }
 
     int err = mHwc->set(mHwc, HWC_NUM_DISPLAY_TYPES, displays);
 
-    mPrevDisplayFence = mPrevRetireFence;
-    mPrevRetireFence = Fence::NO_FENCE;
+    mPrevDisplayFence = FenceHandle(mPrevRetireFence.GetAndResetFd());
 
     for (uint32_t j=0; j < (mList->numHwLayers - 1); j++) {
         if (mList->hwLayers[j].releaseFenceFd >= 0) {
             int fd = mList->hwLayers[j].releaseFenceFd;
             mList->hwLayers[j].releaseFenceFd = -1;
-            sp<Fence> fence = new Fence(fd);
+            FenceHandle fence(fd);
 
             LayerRenderState state = mHwcLayerMap[j]->GetLayer()->GetRenderState();
             if (!state.mTexture) {
@@ -883,11 +878,11 @@ HwcComposer2D::Commit()
                 continue;
             }
             texture->SetReleaseFence(fence);
-       }
-   }
+        }
+    }
 
     if (mList->retireFenceFd >= 0) {
-        mPrevRetireFence = new Fence(mList->retireFenceFd);
+        mPrevRetireFence = FenceHandle(mList->retireFenceFd);
     }
 
     mPrepared = false;
