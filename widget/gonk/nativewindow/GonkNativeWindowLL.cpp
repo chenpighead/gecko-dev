@@ -158,10 +158,8 @@ void GonkNativeWindow::returnBuffer(TextureClient* client) {
         return;
     }
 
-    sp<Fence> fence = client->GetReleaseFenceHandle().mFence;
-    if (!fence.get()) {
-        fence = Fence::NO_FENCE;
-    }
+    FenceHandle handle = client->GetAndResetReleaseFenceHandle();
+    sp<Fence> fence = new Fence(handle.mFence.GetAndResetFd());
 
     status_t err;
     err = addReleaseFenceLocked(index,
