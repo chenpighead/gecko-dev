@@ -1032,6 +1032,7 @@ protected:
   bool ParseMargin();
   bool ParseClipPath();
   bool ParseTransform(bool aIsPrefixed, bool aDisallowRelativeValues = false);
+  bool ParseTranslate();
   bool ParseObjectPosition();
   bool ParseOutline();
   bool ParseOverflow();
@@ -11420,6 +11421,8 @@ CSSParserImpl::ParsePropertyByFunction(nsCSSProperty aPropID)
     return ParseTextEmphasis();
   case eCSSProperty_will_change:
     return ParseWillChange();
+  case eCSSProperty_translate:
+    return ParseTranslate();
   case eCSSProperty_transform:
     return ParseTransform(false);
   case eCSSProperty__moz_transform:
@@ -15523,6 +15526,80 @@ CSSParserImpl::ParseTransform(bool aIsPrefixed, bool aDisallowRelativeValues)
     }
   }
   AppendValue(eCSSProperty_transform, value);
+  return true;
+}
+
+/* Parses translate property and its argument list
+ */
+bool CSSParserImpl::ParseTranslate()
+{
+  nsCSSValue value;
+  bool isInitial = true;
+  // 'initial', 'inherit' and 'unset' stand alone, no list permitted.
+  if (!ParseSingleTokenVariant(value, VARIANT_INHERIT, nullptr)) {
+    isInitial = false;
+    nsCSSValueList* cur = value.SetListValue();
+    CSSParseResult result;
+    for (uint32_t valueCount = 0; valueCount < 3; valueCount++) {
+      if (valueCount == 0) {
+        result = ParseVariant(cur->mValue, VARIANT_LPCALC, nullptr);
+        if (result != CSSParseResult::Ok) {
+          printf_stderr("[jeremy] translate parser called!! - 1st arg before return false!!\n");
+          return false;
+        }
+      } else if (valueCount == 1) {
+        result = ParseVariant(cur->mValue, VARIANT_LPCALC, nullptr);
+        if (result == CSSParseResult::Error) {
+          printf_stderr("[jeremy] translate parser called!! - 2nd arg before return false!!\n");
+          return false;
+        } else if (result == CSSParseResult::NotFound) {
+          break;
+        }
+      } else {
+        result = ParseVariant(cur->mValue, VARIANT_LCALC, nullptr);
+        if (result == CSSParseResult::Error) {
+          printf_stderr("[jeremy] translate parser called!! - 3rd arg before return false!!\n");
+          return false;
+        } else if (result == CSSParseResult::NotFound) {
+          break;
+        }
+      }
+      cur->mNext = new nsCSSValueList;
+      cur = cur->mNext;
+    }
+
+    cur = value.GetListValue();
+    for(int i=0; i<3; i++) {
+      if(cur->mValue.GetUnit() == eCSSUnit_Pixel) {
+        printf_stderr("\n[jeremy] list value = %f px\n", cur->mValue.GetFloatValue());
+      } else if (cur->mValue.GetUnit() == eCSSUnit_Percent) {
+        printf_stderr("\n[jeremy] list value = %f %%\n", 100*(cur->mValue.GetFloatValue()));
+      }
+      if(cur->mNext)
+        cur = cur->mNext;
+      else
+        break;
+    }
+  }
+  AppendValue(eCSSProperty_translate, value);
+
+  if (isInitial) {
+    switch(value.GetUnit()) {
+      case eCSSUnit_Inherit:
+        printf_stderr("\n[jeremy] value = eCSSUnit_Inherit\n");
+        break;
+      case eCSSUnit_Initial:
+        printf_stderr("\n[jeremy] value = eCSSUnit_Initial\n");
+        break;
+      case eCSSUnit_Unset:
+        printf_stderr("\n[jeremy] value = eCSSUnit_Unset\n");
+        break;
+      default:
+        printf_stderr("\n[jeremy] parse initial but not in initial value range!!!!\n");
+    }
+  }
+
+  printf_stderr("\n[jeremy] translate parser called!! - before return true!!\n");
   return true;
 }
 

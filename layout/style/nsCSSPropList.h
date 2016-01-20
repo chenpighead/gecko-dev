@@ -3400,6 +3400,20 @@ CSS_PROP_TEXT(
     CSS_PROP_NO_OFFSET,
     eStyleAnimType_None)
 CSS_PROP_DISPLAY(
+    translate,
+    translate,
+    Translate,
+    CSS_PROPERTY_PARSE_FUNCTION |
+        CSS_PROPERTY_GETCS_NEEDS_LAYOUT_FLUSH |
+        CSS_PROPERTY_CREATES_STACKING_CONTEXT |
+        CSS_PROPERTY_CAN_ANIMATE_ON_COMPOSITOR |
+        CSS_PROPERTY_FIXPOS_CB,
+    "",
+    0,
+    nullptr,
+    offsetof(nsStyleDisplay, mSpecifiedTranslate),
+    eStyleAnimType_Custom)
+CSS_PROP_DISPLAY(
     transform,
     transform,
     Transform,
