@@ -15535,50 +15535,65 @@ bool CSSParserImpl::ParseTranslate()
 {
   nsCSSValue value;
   bool isInitial = true;
-  // 'initial', 'inherit' and 'unset' stand alone, no list permitted.
-  if (!ParseSingleTokenVariant(value, VARIANT_INHERIT, nullptr)) {
+  // 'inherit', 'initial', 'unset' and 'none' must be alone
+  if (!ParseSingleTokenVariant(value, VARIANT_INHERIT | VARIANT_NONE, nullptr)) {
     isInitial = false;
-    nsCSSValueList* cur = value.SetListValue();
     CSSParseResult result;
-    for (uint32_t valueCount = 0; valueCount < 3; valueCount++) {
-      if (valueCount == 0) {
-        result = ParseVariant(cur->mValue, VARIANT_LPCALC, nullptr);
-        if (result != CSSParseResult::Ok) {
-          printf_stderr("[jeremy] translate parser called!! - 1st arg before return false!!\n");
+    AutoTArray<nsCSSValue, 16> foundValues;
+    uint16_t numArgs = 0;
+    for (;;) {
+      nsCSSValue newValue;
+      if (numArgs == 0) {
+        result = ParseVariant(newValue, VARIANT_LPCALC, nullptr);
+        if (result == CSSParseResult::Ok) {
+          foundValues.AppendElement(newValue);
+          numArgs++;
+        } else {
           return false;
         }
-      } else if (valueCount == 1) {
-        result = ParseVariant(cur->mValue, VARIANT_LPCALC, nullptr);
-        if (result == CSSParseResult::Error) {
-          printf_stderr("[jeremy] translate parser called!! - 2nd arg before return false!!\n");
-          return false;
-        } else if (result == CSSParseResult::NotFound) {
+      } else if (numArgs == 1) {
+        result = ParseVariant(newValue, VARIANT_LPCALC, nullptr);
+        if (result == CSSParseResult::Ok) {
+          foundValues.AppendElement(newValue);
+          numArgs++;
+        } else if (ExpectSymbol(';', true)) {
           break;
+        } else {
+          return false;
         }
       } else {
-        result = ParseVariant(cur->mValue, VARIANT_LCALC, nullptr);
-        if (result == CSSParseResult::Error) {
-          printf_stderr("[jeremy] translate parser called!! - 3rd arg before return false!!\n");
-          return false;
-        } else if (result == CSSParseResult::NotFound) {
+        result = ParseVariant(newValue, VARIANT_LCALC, nullptr);
+        if (result == CSSParseResult::Ok) {
+          foundValues.AppendElement(newValue);
+          numArgs++;
           break;
+        } else if (ExpectSymbol(';', true)) {
+          break;
+        } else {
+          return false;
         }
       }
-      cur->mNext = new nsCSSValueList;
-      cur = cur->mNext;
     }
 
-    cur = value.GetListValue();
-    for(int i=0; i<3; i++) {
-      if(cur->mValue.GetUnit() == eCSSUnit_Pixel) {
-        printf_stderr("\n[jeremy] list value = %f px\n", cur->mValue.GetFloatValue());
-      } else if (cur->mValue.GetUnit() == eCSSUnit_Percent) {
-        printf_stderr("\n[jeremy] list value = %f %%\n", 100*(cur->mValue.GetFloatValue()));
+    nsCSSKeyword keyword = nsCSSKeywords::LookupKeyword(NS_LITERAL_STRING("translate"));
+    RefPtr<nsCSSValue::Array> convertedArray =
+      value.InitFunction(keyword, numArgs);
+
+    typedef InfallibleTArray<nsCSSValue>::size_type arrlen_t;
+
+    /* Copy things over. */
+    for (uint16_t index = 0; index < numArgs; ++index)
+      convertedArray->Item(index + 1) = foundValues[static_cast<arrlen_t>(index)];
+
+    for(size_t i = 0; i < value.GetArrayValue()->Count(); i++) {
+      nsCSSValue vTemp = value.GetArrayValue()->Item(i);
+      if(vTemp.IsLengthUnit()) {
+        printf_stderr("\n[jeremy] length arg value = %f \n", vTemp.GetFloatValue());
+      } else if (vTemp.GetUnit() == eCSSUnit_Percent) {
+        printf_stderr("\n[jeremy] percent arg value = %f %%\n", 100*(vTemp.GetFloatValue()));
+      } else if (vTemp.GetUnit() == eCSSUnit_Enumerated) {
+        printf_stderr("\n[jeremy] keyword value = %s \n", nsCSSKeywords::GetStringValue(vTemp.GetKeywordValue()).get());
       }
-      if(cur->mNext)
-        cur = cur->mNext;
-      else
-        break;
     }
   }
   AppendValue(eCSSProperty_translate, value);
