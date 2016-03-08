@@ -15534,10 +15534,8 @@ CSSParserImpl::ParseTransform(bool aIsPrefixed, bool aDisallowRelativeValues)
 bool CSSParserImpl::ParseTranslate()
 {
   nsCSSValue value;
-  bool isInitial = true;
   // 'inherit', 'initial', 'unset' and 'none' must be alone
   if (!ParseSingleTokenVariant(value, VARIANT_INHERIT | VARIANT_NONE, nullptr)) {
-    isInitial = false;
     CSSParseResult result;
     AutoTArray<nsCSSValue, 16> foundValues;
     uint16_t numArgs = 0;
@@ -15575,46 +15573,19 @@ bool CSSParserImpl::ParseTranslate()
       }
     }
 
-    nsCSSKeyword keyword = nsCSSKeywords::LookupKeyword(NS_LITERAL_STRING("translate"));
+    nsCSSKeyword keyword =
+      nsCSSKeywords::LookupKeyword(NS_LITERAL_STRING("translate"));
     RefPtr<nsCSSValue::Array> convertedArray =
       value.InitFunction(keyword, numArgs);
 
     typedef InfallibleTArray<nsCSSValue>::size_type arrlen_t;
 
     /* Copy things over. */
-    for (uint16_t index = 0; index < numArgs; ++index)
+    for (uint16_t index = 0; index < numArgs; ++index) {
       convertedArray->Item(index + 1) = foundValues[static_cast<arrlen_t>(index)];
-
-    for(size_t i = 0; i < value.GetArrayValue()->Count(); i++) {
-      nsCSSValue vTemp = value.GetArrayValue()->Item(i);
-      if(vTemp.IsLengthUnit()) {
-        printf_stderr("\n[jeremy] length arg value = %f \n", vTemp.GetFloatValue());
-      } else if (vTemp.GetUnit() == eCSSUnit_Percent) {
-        printf_stderr("\n[jeremy] percent arg value = %f %%\n", 100*(vTemp.GetFloatValue()));
-      } else if (vTemp.GetUnit() == eCSSUnit_Enumerated) {
-        printf_stderr("\n[jeremy] keyword value = %s \n", nsCSSKeywords::GetStringValue(vTemp.GetKeywordValue()).get());
-      }
     }
   }
   AppendValue(eCSSProperty_translate, value);
-
-  if (isInitial) {
-    switch(value.GetUnit()) {
-      case eCSSUnit_Inherit:
-        printf_stderr("\n[jeremy] value = eCSSUnit_Inherit\n");
-        break;
-      case eCSSUnit_Initial:
-        printf_stderr("\n[jeremy] value = eCSSUnit_Initial\n");
-        break;
-      case eCSSUnit_Unset:
-        printf_stderr("\n[jeremy] value = eCSSUnit_Unset\n");
-        break;
-      default:
-        printf_stderr("\n[jeremy] parse initial but not in initial value range!!!!\n");
-    }
-  }
-
-  printf_stderr("\n[jeremy] translate parser called!! - before return true!!\n");
   return true;
 }
 
