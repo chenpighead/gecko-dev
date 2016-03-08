@@ -3411,7 +3411,7 @@ CSS_PROP_DISPLAY(
     "",
     0,
     nullptr,
-    offsetof(nsStyleDisplay, mSpecifiedTransform),
+    offsetof(nsStyleDisplay, mSpecifiedTranslate),
     eStyleAnimType_Custom)
 CSS_PROP_DISPLAY(
     transform,

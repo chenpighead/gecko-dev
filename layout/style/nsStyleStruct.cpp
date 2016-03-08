@@ -2819,6 +2819,7 @@ nsStyleDisplay::nsStyleDisplay()
   mClip.SetRect(0,0,0,0);
   mOpacity = 1.0f;
   mSpecifiedTransform = nullptr;
+  mSpecifiedTranslate = nullptr;
   mTransformOrigin[0].SetPercentValue(0.5f); // Transform is centered on origin
   mTransformOrigin[1].SetPercentValue(0.5f);
   mTransformOrigin[2].SetCoordValue(0);
@@ -2902,6 +2903,7 @@ nsStyleDisplay::nsStyleDisplay(const nsStyleDisplay& aSource)
   , mTransformStyle(aSource.mTransformStyle)
   , mTransformBox(aSource.mTransformBox)
   , mSpecifiedTransform(aSource.mSpecifiedTransform)
+  , mSpecifiedTranslate(aSource.mSpecifiedTranslate)
   , mChildPerspective(aSource.mChildPerspective)
   , mTransitions(aSource.mTransitions)
   , mTransitionTimingFunctionCount(aSource.mTransitionTimingFunctionCount)

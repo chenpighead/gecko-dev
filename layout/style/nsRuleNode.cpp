@@ -6093,6 +6093,62 @@ nsRuleNode::ComputeDisplayData(void* aStartStruct,
     MOZ_ASSERT(false, "unrecognized transform unit");
   }
 
+  /* Combine the nsCSSValue parsed from translate into transform. */
+  const nsCSSValue* translateValue = aRuleData->ValueForTranslate();
+  switch (translateValue->GetUnit()) {
+  case eCSSUnit_Null:
+    break;
+
+  case eCSSUnit_Initial:
+  case eCSSUnit_Unset:
+  case eCSSUnit_None:
+    display->mSpecifiedTranslate = nullptr;
+    break;
+
+  case eCSSUnit_Inherit:
+    display->mSpecifiedTranslate = parentDisplay->mSpecifiedTranslate;
+    conditions.SetUncacheable();
+    break;
+
+  case eCSSUnit_Function: {
+    nsCSSValueSharedList* slist = new nsCSSValueSharedList();
+    nsCSSValueList* vlist = new nsCSSValueList();
+    slist->mHead = vlist;
+    RefPtr<nsCSSValue::Array> func =
+      nsCSSValue::Array::Create(translateValue->GetArrayValue()->Count());
+    for(size_t i = 0; i < translateValue->GetArrayValue()->Count(); i++) {
+      func->Item(i) = translateValue->GetArrayValue()->Item(i);
+    }
+    vlist->mValue.SetArrayValue(func, eCSSUnit_Function);
+    display->mSpecifiedTranslate = slist;
+    break;
+  }
+
+  default:
+    MOZ_ASSERT(false, "unrecognized translate unit");
+  }
+
+  /* Insert individual translate in the head of transform list */
+  if (display->mSpecifiedTranslate != nullptr) {
+    nsCSSValueSharedList* list;
+    if (display->mSpecifiedTransform == nullptr) {
+      list =  new nsCSSValueSharedList();
+    } else {
+      list =  display->mSpecifiedTransform;
+    }
+    nsCSSValueList* newHead = new nsCSSValueList();
+    nsCSSValueSharedList* listTemp = display->mSpecifiedTranslate;
+    RefPtr<nsCSSValue::Array> func =
+      nsCSSValue::Array::Create(listTemp->mHead->mValue.GetArrayValue()->Count());
+    for(size_t i = 0; i < listTemp->mHead->mValue.GetArrayValue()->Count(); i++) {
+      func->Item(i) = listTemp->mHead->mValue.GetArrayValue()->Item(i);
+    }
+    newHead->mValue.SetArrayValue(func, eCSSUnit_Function);
+    newHead->mNext = list->mHead;
+    list->mHead = newHead;
+    display->mSpecifiedTransform = list;
+  }
+
   /* Convert the nsCSSValueList into a will-change bitfield for fast lookup */
   const nsCSSValue* willChangeValue = aRuleData->ValueForWillChange();
   switch (willChangeValue->GetUnit()) {
