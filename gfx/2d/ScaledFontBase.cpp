@@ -74,7 +74,7 @@ ScaledFontBase::PopulateCairoScaledFont()
 
 #ifdef USE_SKIA
 SkPath
-ScaledFontBase::GetSkiaPathForGlyphs(const GlyphBuffer &aBuffer)
+ScaledFontBase::GetSkiaPathForGlyphs(const GlyphBuffer &aBuffer, float aStrokeWidth)
 {
   SkTypeface *typeFace = GetSkTypeface();
   MOZ_ASSERT(typeFace);
@@ -97,6 +97,13 @@ ScaledFontBase::GetSkiaPathForGlyphs(const GlyphBuffer &aBuffer)
 
   SkPath path;
   paint.getPosTextPath(&indices.front(), aBuffer.mNumGlyphs*2, &offsets.front(), &path);
+
+  if (aStrokeWidth != 0.0f) {
+    paint.setStrokeWidth(SkFloatToScalar(aStrokeWidth*1.5));
+    paint.setStyle(SkPaint::kStrokeAndFill_Style);
+    paint.getFillPath(path, &path);
+  }
+
   return path;
 }
 #endif
@@ -106,7 +113,7 @@ ScaledFontBase::GetPathForGlyphs(const GlyphBuffer &aBuffer, const DrawTarget *a
 {
 #ifdef USE_SKIA
   if (aTarget->GetBackendType() == BackendType::SKIA) {
-    SkPath path = GetSkiaPathForGlyphs(aBuffer);
+    SkPath path = GetSkiaPathForGlyphs(aBuffer, 0.0f);
     return MakeAndAddRef<PathSkia>(path, FillRule::FILL_WINDING);
   }
 #endif
@@ -151,12 +158,57 @@ ScaledFontBase::GetPathForGlyphs(const GlyphBuffer &aBuffer, const DrawTarget *a
 }
 
 void
+ScaledFontBase::CopyGlyphsToBuilderWithStroke(const GlyphBuffer &aBuffer, PathBuilder *aBuilder, BackendType aBackendType, const Matrix *aTransformHint, float aStrokeWidth)
+{
+#ifdef USE_SKIA
+  if (aBackendType == BackendType::SKIA) {
+    PathBuilderSkia *builder = static_cast<PathBuilderSkia*>(aBuilder);
+    builder->AppendPath(GetSkiaPathForGlyphs(aBuffer, aStrokeWidth));
+    return;
+  }
+#endif
+#ifdef USE_CAIRO
+  if (aBackendType == BackendType::CAIRO) {
+    MOZ_ASSERT(mScaledFont);
+
+    PathBuilderCairo* builder = static_cast<PathBuilderCairo*>(aBuilder);
+    cairo_t *ctx = cairo_create(DrawTargetCairo::GetDummySurface());
+
+    if (aTransformHint) {
+      cairo_matrix_t mat;
+      GfxMatrixToCairoMatrix(*aTransformHint, mat);
+      cairo_set_matrix(ctx, &mat);
+    }
+
+    // Convert our GlyphBuffer into an array of Cairo glyphs.
+    std::vector<cairo_glyph_t> glyphs(aBuffer.mNumGlyphs);
+    for (uint32_t i = 0; i < aBuffer.mNumGlyphs; ++i) {
+      glyphs[i].index = aBuffer.mGlyphs[i].mIndex;
+      glyphs[i].x = aBuffer.mGlyphs[i].mPosition.x;
+      glyphs[i].y = aBuffer.mGlyphs[i].mPosition.y;
+    }
+
+    cairo_set_scaled_font(ctx, mScaledFont);
+    cairo_glyph_path(ctx, &glyphs[0], aBuffer.mNumGlyphs);
+
+    RefPtr<PathCairo> cairoPath = new PathCairo(ctx);
+    cairo_destroy(ctx);
+
+    cairoPath->AppendPathToBuilder(builder);
+    return;
+  }
+#endif
+
+  MOZ_CRASH("GFX: The specified backend type is not supported by CopyGlyphsToBuilder");
+}
+
+void
 ScaledFontBase::CopyGlyphsToBuilder(const GlyphBuffer &aBuffer, PathBuilder *aBuilder, BackendType aBackendType, const Matrix *aTransformHint)
 {
 #ifdef USE_SKIA
   if (aBackendType == BackendType::SKIA) {
     PathBuilderSkia *builder = static_cast<PathBuilderSkia*>(aBuilder);
-    builder->AppendPath(GetSkiaPathForGlyphs(aBuffer));
+    builder->AppendPath(GetSkiaPathForGlyphs(aBuffer, 0.0f));
     return;
   }
 #endif

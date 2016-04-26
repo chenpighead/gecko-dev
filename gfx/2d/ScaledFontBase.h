@@ -35,6 +35,8 @@ public:
 
   virtual void CopyGlyphsToBuilder(const GlyphBuffer &aBuffer, PathBuilder *aBuilder, BackendType aBackendType, const Matrix *aTransformHint);
 
+  virtual void CopyGlyphsToBuilderWithStroke(const GlyphBuffer &aBuffer, PathBuilder *aBuilder, BackendType aBackendType, const Matrix *aTransformHint, float aStrokeWidth);
+
   float GetSize() { return mSize; }
 
 #ifdef USE_SKIA
@@ -54,7 +56,7 @@ protected:
   friend class DrawTargetSkia;
 #ifdef USE_SKIA
   SkTypeface* mTypeface;
-  SkPath GetSkiaPathForGlyphs(const GlyphBuffer &aBuffer);
+  SkPath GetSkiaPathForGlyphs(const GlyphBuffer &aBuffer, float aStrokeWidth);
 #endif
 #ifdef USE_CAIRO_SCALED_FONT
   // Overridders should ensure the cairo_font_face_t has been addrefed.

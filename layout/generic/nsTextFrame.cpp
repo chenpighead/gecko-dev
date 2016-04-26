@@ -6665,6 +6665,7 @@ DrawTextRun(gfxTextRun* aTextRun,
   if (aParams.callbacks) {
     aParams.callbacks->NotifyBeforeText(aParams.textColor);
     params.drawMode = DrawMode::GLYPH_PATH;
+    params.textStrokeWidth = aParams.textStrokeWidth;
     aTextRun->Draw(aRange, aTextBaselinePt, params);
     aParams.callbacks->NotifyAfterText();
   } else {

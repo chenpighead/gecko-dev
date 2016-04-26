@@ -1689,9 +1689,9 @@ private:
         if (mRunParams.drawMode & DrawMode::GLYPH_PATH) {
             mRunParams.context->EnsurePathBuilder();
             Matrix mat = mRunParams.dt->GetTransform();
-            mFontParams.scaledFont->CopyGlyphsToBuilder(
+            mFontParams.scaledFont->CopyGlyphsToBuilderWithStroke(
                 buf, mRunParams.context->mPathBuilder,
-                mRunParams.dt->GetBackendType(), &mat);
+                mRunParams.dt->GetBackendType(), &mat, mRunParams.textStrokeWidth);
         }
 
         mNumGlyphs = 0;

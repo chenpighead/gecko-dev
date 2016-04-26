@@ -662,7 +662,7 @@ public:
    * others.
    */
   virtual void CopyGlyphsToBuilder(const GlyphBuffer &aBuffer, PathBuilder *aBuilder, BackendType aBackendType, const Matrix *aTransformHint = nullptr) = 0;
-
+  virtual void CopyGlyphsToBuilderWithStroke(const GlyphBuffer &aBuffer, PathBuilder *aBuilder, BackendType aBackendType, const Matrix *aTransformHint, float aStrokeWidth) { return; };
   virtual bool GetFontFileData(FontFileDataOutput, void *) { return false; }
 
   virtual bool GetFontDescriptor(FontDescriptorOutput, void *) { return false; }
