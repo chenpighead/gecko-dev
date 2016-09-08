@@ -2470,7 +2470,7 @@ pref("layout.css.dpi", -1);
 pref("layout.css.devPixelsPerPx", "-1.0");
 
 // Is support for CSS initial-letter property enabled?
-pref("layout.css.initial-letter.enabled", false);
+pref("layout.css.initial-letter.enabled", true);
 
 // Is support for mix-blend-mode enabled?
 pref("layout.css.mix-blend-mode.enabled", true);
