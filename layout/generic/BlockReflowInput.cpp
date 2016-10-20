@@ -143,6 +143,14 @@ BlockReflowInput::BlockReflowInput(const ReflowInput& aReflowInput,
   mCurrentLine = aFrame->LinesEnd();
 
   mMinLineHeight = aReflowInput.CalcLineHeight();
+
+  RefPtr<nsStyleContext> firstLetterSC = mBlock->GetFirstLetterStyle(mBlock->PresContext());
+  mFlags.mHasFloatingInitialLetter =
+    ((mBlock->GetStateBits() & NS_BLOCK_HAS_FIRST_LETTER_STYLE) != 0) &&
+    firstLetterSC != nullptr &&
+    firstLetterSC->StyleDisplay()->mFloat != StyleFloat::None &&
+    firstLetterSC->StyleTextReset()->mInitialLetterSize != 0.0f;
+
 }
 
 nscoord

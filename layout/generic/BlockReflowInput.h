@@ -39,6 +39,7 @@ class BlockReflowInput {
       , mIsOverflowContainer(false)
       , mIsFloatListInBlockPropertyTable(false)
       , mFloatFragmentsInsideColumnEnabled(false)
+      , mHasFloatingInitialLetter(false)
     {}
 
     // Set in the BlockReflowInput constructor when the frame being reflowed has
@@ -102,6 +103,8 @@ class BlockReflowInput {
 
     // Set when the pref layout.float-fragments-inside-column.enabled is true.
     bool mFloatFragmentsInsideColumnEnabled : 1;
+
+    bool mHasFloatingInitialLetter : 1;
   };
 
 public:
