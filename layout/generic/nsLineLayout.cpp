@@ -798,6 +798,31 @@ IsPercentageAware(const nsIFrame* aFrame)
   return false;
 }
 
+static float
+GetInflationForBlockDirAlignment(nsIFrame* aFrame,
+                                 nscoord aInflationMinFontSize)
+{
+  if (aFrame->IsSVGText()) {
+    const nsIFrame* container =
+      nsLayoutUtils::GetClosestFrameOfType(aFrame, nsGkAtoms::svgTextFrame);
+    NS_ASSERTION(container, "expected to find an ancestor SVGTextFrame");
+    return
+      static_cast<const SVGTextFrame*>(container)->GetFontSizeScaleFactor();
+  }
+  return nsLayoutUtils::FontSizeInflationInner(aFrame, aInflationMinFontSize);
+}
+
+static bool
+IsFloatingInitialLetterChild(nsIFrame* aFrame)
+{
+  return aFrame && !aFrame->GetPrevInFlow() &&
+         aFrame->GetType() == nsGkAtoms::textFrame &&
+         aFrame->GetParent() &&
+         aFrame->GetParent()->StyleTextReset()->mInitialLetterSink != 0 &&
+         static_cast<nsTextFrame*>(aFrame)->IsFloatingFirstLetterChild() &&
+         static_cast<nsTextFrame*>(aFrame)->IsInitialLetterChild();
+}
+
 void
 nsLineLayout::ReflowFrame(nsIFrame* aFrame,
                           nsReflowStatus& aReflowStatus,
@@ -834,6 +859,51 @@ nsLineLayout::ReflowFrame(nsIFrame* aFrame,
   // (block-direction alignment, for example)
   WritingMode frameWM = pfd->mWritingMode;
   WritingMode lineWM = mRootSpan->mWritingMode;
+
+  // CSS Inline Layout Level 3 - 3.3 Creating Initial Letters
+  // If we're going to sink the lines of texts, we should adjust the mBStartEdge
+  // at the beginning of the line layout's reflow process. Then, the lines
+  // could be placed in the right places to render a perfect result for
+  // initial-letter property. To ensure that we are at the beginning of the
+  // lines' reflow, check if we are reflowing the first continuation texts of
+  // an initial letter.
+  nsIFrame* prevFrame = aFrame->GetPrevInFlow();
+  nscoord offset = 0;
+  if (IsFloatingInitialLetterChild(prevFrame)) {
+    // Here, the initial letter's baseline, i.e., initialBaseline, and the Nth
+    // line's baseline that initialBaseline should be aligned with, i.e.,
+    // targetBaseline, are both evaluated. If targetBaseline < initialBaseline,
+    // we should adjust targetBaseline downwards. As to the logic for sinking
+    // the initial letter's baseline, please see nsFirstLetterFrame::Reflow().
+    const nsStyleTextReset* styleTR = prevFrame->GetParent()->StyleTextReset();
+    if (styleTR->mInitialLetterSink != 0) {
+      // Get parent frame info
+      PerFrameData* spanFramePFD = psd->mFrame;
+      nsIFrame* spanFrame = spanFramePFD->mFrame;
+
+      // Get the parent frame's line-height and font for all of the frames in
+      // this span
+      float inflation =
+        GetInflationForBlockDirAlignment(spanFrame, mInflationMinFontSize);
+      nscoord containerLH = ReflowInput::
+        CalcLineHeight(nullptr, spanFrame->StyleContext(), NS_AUTOHEIGHT, inflation);
+      RefPtr<nsFontMetrics> containerFM =
+        nsLayoutUtils::GetFontMetricsForFrame(spanFrame, inflation);
+      MOZ_ASSERT(containerFM, "Should have fontMetrics!!");
+      nscoord topLeading = (containerLH - containerFM->MaxHeight()) / 2;
+      nscoord lineAscent = topLeading + containerFM->MaxAscent();
+      nscoord targetBaseline =
+        (styleTR->mInitialLetterSink - 1) * containerLH + lineAscent;
+      nscoord initialBaseline =
+        static_cast<nsTextFrame*>(prevFrame)->GetLogicalBaseline(lineWM);
+
+      if (targetBaseline < initialBaseline) {
+        offset = initialBaseline - targetBaseline;
+      }
+    }
+  }
+
+  mBStartEdge += offset;
 
   // NOTE: While the inline direction coordinate remains relative to the
   // parent span, the block direction coordinate is fixed at the top
@@ -1734,20 +1804,6 @@ nsLineLayout::AdjustLeadings(nsIFrame* spanFrame, PerSpanData* psd,
       *aZeroEffectiveSpanBox = false;
     }
   }
-}
-
-static float
-GetInflationForBlockDirAlignment(nsIFrame* aFrame,
-                                 nscoord aInflationMinFontSize)
-{
-  if (aFrame->IsSVGText()) {
-    const nsIFrame* container =
-      nsLayoutUtils::GetClosestFrameOfType(aFrame, nsGkAtoms::svgTextFrame);
-    NS_ASSERTION(container, "expected to find an ancestor SVGTextFrame");
-    return
-      static_cast<const SVGTextFrame*>(container)->GetFontSizeScaleFactor();
-  }
-  return nsLayoutUtils::FontSizeInflationInner(aFrame, aInflationMinFontSize);
 }
 
 #define BLOCKDIR_ALIGN_FRAMES_NO_MINIMUM nscoord_MAX
