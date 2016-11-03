@@ -189,6 +189,7 @@ nsFirstLetterFrame::Reflow(nsPresContext*          aPresContext,
 
   WritingMode lineWM = aMetrics.GetWritingMode();
   ReflowOutput kidMetrics(lineWM);
+  const nsStyleTextReset* styleTR = mStyleContext->StyleTextReset();
 
   // Reflow the child
   if (!aReflowInput.mLineLayout) {
@@ -214,22 +215,62 @@ nsFirstLetterFrame::Reflow(nsPresContext*          aPresContext,
     ll.EndLineReflow();
     ll.SetInFirstLetter(false);
 
+    // CSS Inline Layout Level 3 - 3.3 Creating Initial Letters
+    // According to the specification, the initial letter's baseline should
+    // sink to the Nth line, where N is the sink value of the initial-letter
+    // property. To achieve the alignment, we can either adjust the initial
+    // letter's baseline, or move the rest lines of texts. The point is that we
+    // should align the top of the block container with, either the top of the
+    // initial letter, or the top of the first line. So, if moving the rest
+    // lines of texts would break this rule, we should adjust the initial
+    // letter's baseline instead.
+    // Here, the initial letter's baseline, i.e., initialBaseline, and the Nth
+    // line's baseline, i.e., targetBaseline, are both evaluated. If
+    // targetBaseline > initialBaseline, we should adjust initialBaseline
+    // downwards to be aligned with targetBaseline. As to the logic for moving
+    // the rest lines of texts, please see nsLineLayout::ReflowFrame().
+    nscoord offset = 0;
+    if (styleTR->mInitialLetterSink != 0) {
+      nsStyleContext* containerSC = mStyleContext->GetParent();
+      const nsStyleDisplay* containerDisp = containerSC->StyleDisplay();
+      while (containerDisp->mDisplay == mozilla::StyleDisplay::Contents) {
+        if (!containerSC->GetParent()) {
+          break;
+        }
+        containerSC = containerSC->GetParent();
+        containerDisp = containerSC->StyleDisplay();
+      }
+      nscoord containerLH =
+        ReflowInput::CalcLineHeight(nullptr, containerSC, NS_AUTOHEIGHT, 1.0f);
+      RefPtr<nsFontMetrics> containerFM =
+        nsLayoutUtils::GetFontMetricsForStyleContext(containerSC);
+      MOZ_ASSERT(containerFM, "Should have fontMetrics!!");
+      nscoord topLeading = (containerLH - containerFM->MaxHeight()) / 2;
+      nscoord lineAscent = topLeading + containerFM->MaxAscent();
+
+      nscoord targetBaseline =
+        (styleTR->mInitialLetterSink - 1) * containerLH + lineAscent;
+      nscoord initialBaseline = kidMetrics.BlockStartAscent();
+      if (targetBaseline > initialBaseline) {
+        offset = targetBaseline - initialBaseline;
+      }
+    }
     // In the floating first-letter case, we need to set this ourselves;
     // nsLineLayout::BeginSpan will set it in the other case
-    mBaseline = kidMetrics.BlockStartAscent();
+    mBaseline = kidMetrics.BlockStartAscent() + offset;
 
     // Place and size the child and update the output metrics
     LogicalSize convertedSize = kidMetrics.Size(lineWM).ConvertTo(wm, lineWM);
-    kid->SetRect(nsRect(bp.IStart(wm), bp.BStart(wm),
+    kid->SetRect(nsRect(bp.IStart(wm), bp.BStart(wm) + offset,
                         convertedSize.ISize(wm), convertedSize.BSize(wm)));
     kid->FinishAndStoreOverflow(&kidMetrics);
     kid->DidReflow(aPresContext, nullptr, nsDidReflowStatus::FINISHED);
 
     convertedSize.ISize(wm) += bp.IStartEnd(wm);
-    convertedSize.BSize(wm) += bp.BStartEnd(wm);
+    convertedSize.BSize(wm) += bp.BStartEnd(wm) + offset;
     aMetrics.SetSize(wm, convertedSize);
     aMetrics.SetBlockStartAscent(kidMetrics.BlockStartAscent() +
-                                 bp.BStart(wm));
+                                 bp.BStart(wm) + offset);
 
     // Ensure that the overflow rect contains the child textframe's
     // overflow rect.
@@ -256,7 +297,7 @@ nsFirstLetterFrame::Reflow(nsPresContext*          aPresContext,
     aMetrics.ISize(lineWM) = ll->EndSpan(this) + bp.IStartEnd(wm);
     ll->SetInFirstLetter(false);
 
-    if (mStyleContext->StyleTextReset()->mInitialLetterSize != 0.0f) {
+    if (styleTR->mInitialLetterSize != 0.0f) {
       aMetrics.SetBlockStartAscent(kidMetrics.BlockStartAscent() +
                                    bp.BStart(wm));
       aMetrics.BSize(lineWM) = kidMetrics.BSize(lineWM) + bp.BStartEnd(wm);
