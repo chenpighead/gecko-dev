@@ -860,7 +860,7 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
     if (haveSpacing) {
         GetAdjustedSpacing(this, bufferRange, aProvider, spacingBuffer);
     }
-    bool hyphenBuffer[MEASUREMENT_BUFFER_SIZE];
+    HyphenType hyphenBuffer[MEASUREMENT_BUFFER_SIZE];
     bool haveHyphenation = aProvider &&
         (aProvider->GetHyphensOption() == StyleHyphens::Auto ||
          (aProvider->GetHyphensOption() == StyleHyphens::Manual &&
@@ -878,6 +878,12 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
     int32_t lastBreak = -1;
     int32_t lastBreakTrimmableChars = -1;
     gfxFloat lastBreakTrimmableAdvance = -1;
+    // Cache the last candidate break
+    int32_t lastCandidateBreak = -1;
+    int32_t lastCandidateBreakTrimmableChars = -1;
+    gfxFloat lastCandidateBreakTrimmableAdvance = -1;
+    bool lastCandidateBreakUsedHyphenation = false;
+    gfxBreakPriority lastCandidateBreakPriority = gfxBreakPriority::eNoBreak;
     bool aborted = false;
     uint32_t end = aStart + aMaxLength;
     bool lastBreakUsedHyphenation = false;
@@ -907,8 +913,11 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
         if (aSuppressBreak != eSuppressAllBreaks &&
             (aSuppressBreak != eSuppressInitialBreak || i > aStart)) {
             bool atNaturalBreak = mCharacterGlyphs[i].CanBreakBefore() == 1;
-            bool atHyphenationBreak = !atNaturalBreak &&
-                haveHyphenation && hyphenBuffer[i - bufferRange.start];
+            bool atHyphenationBreak =
+                !atNaturalBreak && haveHyphenation &&
+                hyphenBuffer[i - bufferRange.start] != HyphenType::None;
+            bool atAutoHyphenWithManualHyphenInSameWord = atHyphenationBreak &&
+                hyphenBuffer[i - bufferRange.start] == HyphenType::AutoWithManualInSameWord;
             bool atBreak = atNaturalBreak || atHyphenationBreak;
             bool wordWrapping =
                 aCanWordWrap && mCharacterGlyphs[i].IsClusterStart() &&
@@ -920,14 +929,15 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
                     hyphenatedAdvance += aProvider->GetHyphenWidth();
                 }
 
-                if (lastBreak < 0 || width + hyphenatedAdvance - trimmableAdvance <= aWidth) {
-                    // We can break here.
+                if (lastBreak < 0 ||
+                    width + hyphenatedAdvance - trimmableAdvance <= aWidth) {
                     lastBreak = i;
                     lastBreakTrimmableChars = trimmableChars;
                     lastBreakTrimmableAdvance = trimmableAdvance;
                     lastBreakUsedHyphenation = atHyphenationBreak;
-                    *aBreakPriority = atBreak ? gfxBreakPriority::eNormalBreak
-                                              : gfxBreakPriority::eWordWrapBreak;
+                    *aBreakPriority = atBreak
+                                      ? gfxBreakPriority::eNormalBreak
+                                      : gfxBreakPriority::eWordWrapBreak;
                 }
 
                 width += advance;
@@ -936,6 +946,26 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
                     // No more text fits. Abort
                     aborted = true;
                     break;
+                }
+                // There are various kinds of break opportunities:
+                // 1. word wrap break,
+                // 2. natural break,
+                // 3. manual hyphenation break,
+                // 4. auto hyphenation break without any manual hyphenation
+                //    in the same word,
+                // 5. auto hyphenation break with another manual hyphenation
+                //    in the same word.
+                // Allow all of them except the last one to be a candidate.
+                // So, we can ensure that we don't use an automatic
+                // hyphenation opportunity within a word that contains another
+                // manual hyphenation, unless it is the only choice.
+                if (wordWrapping ||
+                    !atAutoHyphenWithManualHyphenInSameWord) {
+                    lastCandidateBreak = lastBreak;
+                    lastCandidateBreakTrimmableChars = lastBreakTrimmableChars;
+                    lastCandidateBreakTrimmableAdvance = lastBreakTrimmableAdvance;
+                    lastCandidateBreakUsedHyphenation = lastBreakUsedHyphenation;
+                    lastCandidateBreakPriority = *aBreakPriority;
                 }
             }
         }
@@ -978,6 +1008,13 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
     if (width - trimmableAdvance <= aWidth) {
         charsFit = aMaxLength;
     } else if (lastBreak >= 0) {
+        if (lastCandidateBreak >= 0 && lastCandidateBreak != lastBreak) {
+            lastBreak = lastCandidateBreak;
+            lastBreakTrimmableChars = lastCandidateBreakTrimmableChars;
+            lastBreakTrimmableAdvance = lastCandidateBreakTrimmableAdvance;
+            lastBreakUsedHyphenation = lastCandidateBreakUsedHyphenation;
+            *aBreakPriority = lastCandidateBreakPriority;
+        }
         charsFit = lastBreak - aStart;
         trimmableChars = lastBreakTrimmableChars;
         trimmableAdvance = lastBreakTrimmableAdvance;
