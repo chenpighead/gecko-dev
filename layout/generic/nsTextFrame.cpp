@@ -3115,7 +3115,8 @@ public:
 
   virtual void GetSpacing(Range aRange, Spacing* aSpacing);
   virtual gfxFloat GetHyphenWidth();
-  virtual void GetHyphenationBreaks(Range aRange, bool* aBreakBefore);
+  virtual void GetHyphenationBreaks(Range aRange, bool* aBreakBefore,
+                                    bool *aHasSoftHyphenInSameWord);
   virtual StyleHyphens GetHyphensOption() {
     return mTextStyle->mHyphens;
   }
@@ -3553,11 +3554,13 @@ PropertyProvider::GetHyphenWidth()
 }
 
 void
-PropertyProvider::GetHyphenationBreaks(Range aRange, bool* aBreakBefore)
+PropertyProvider::GetHyphenationBreaks(Range aRange, bool* aBreakBefore,
+                                       bool *aHasSoftHyphenInSameWord)
 {
   NS_PRECONDITION(IsInBounds(mStart, mLength, aRange), "Range out of bounds");
   NS_PRECONDITION(mLength != INT32_MAX, "Can't call this with undefined length");
 
+  memset(aHasSoftHyphenInSameWord, false, aRange.Length() * sizeof(bool));
   if (!mTextStyle->WhiteSpaceCanWrap(mFrame) ||
       mTextStyle->mHyphens == StyleHyphens::None)
   {
@@ -3588,7 +3591,8 @@ PropertyProvider::GetHyphenationBreaks(Range aRange, bool* aBreakBefore)
         mFrag->CharAt(run.GetOriginalOffset() + run.GetRunLength() - 1) == CH_SHY;
     } else {
       int32_t runOffsetInSubstring = run.GetSkippedOffset() - aRange.start;
-      memset(aBreakBefore + runOffsetInSubstring, false, run.GetRunLength()*sizeof(bool));
+      memset(aBreakBefore + runOffsetInSubstring, false,
+             run.GetRunLength()*sizeof(bool));
       // Don't allow hyphen breaks at the start of the line
       aBreakBefore[runOffsetInSubstring] = allowHyphenBreakBeforeNextChar &&
           (!(mFrame->GetStateBits() & TEXT_START_OF_LINE) ||
@@ -3598,7 +3602,44 @@ PropertyProvider::GetHyphenationBreaks(Range aRange, bool* aBreakBefore)
   }
 
   if (mTextStyle->mHyphens == StyleHyphens::Auto) {
+    nsTArray<bool> isWordBoundary;
+    isWordBoundary.SetLength(aRange.Length());
+    memset(isWordBoundary.Elements(), false, aRange.Length() * sizeof(bool));
+    // Get info about boundarirs between words
     for (uint32_t i = 0; i < aRange.Length(); ++i) {
+      int32_t fragIndex = mFrag->GetLength() > aRange.end ?
+                          aRange.start + i : i;
+      if (mFrag->CharAt(fragIndex) == ' ') {
+        isWordBoundary[i] = true;
+      }
+    }
+    // Use word boundary to determine if an auto hyphen is with another
+    // soft hyphen in the same word.
+    for (uint32_t i = 0; i < aRange.Length(); ++i) {
+      if (!isWordBoundary[i] && i + 1 < aRange.Length()) {
+        uint32_t j;
+        bool hasSoftHyphenInSameWord = false;
+        if (aBreakBefore[i]) {
+            hasSoftHyphenInSameWord = true;
+          }
+        for (j = i + 1; !isWordBoundary[j] && j + 1 < aRange.Length(); j++) {
+          if (aBreakBefore[j]) {
+            hasSoftHyphenInSameWord = true;
+          }
+        }
+        for (uint32_t k = i; k <= j; k++) {
+          if (mTextRun->CanHyphenateBefore(aRange.start + k)) {
+            // Don't set aHasSoftHyphenInSameWord for the soft hyphen position.
+            if (!aBreakBefore[k] && hasSoftHyphenInSameWord) {
+              aHasSoftHyphenInSameWord[k] = true;
+            }
+            aBreakBefore[k] = true;
+          }
+        }
+        i = j + 1;
+        continue;
+      }
+
       if (mTextRun->CanHyphenateBefore(aRange.start + i)) {
         aBreakBefore[i] = true;
       }
@@ -8342,13 +8383,18 @@ nsTextFrame::AddInlineMinISizeForFlow(nsRenderingContext *aRenderingContext,
   }
 
   AutoTArray<bool,BIG_TEXT_NODE_SIZE> hyphBuffer;
+  AutoTArray<bool,BIG_TEXT_NODE_SIZE> autoHyphBuffer;
   bool *hyphBreakBefore = nullptr;
+  bool *hasSoftHyphenInSameWord = nullptr;
   if (hyphenating) {
     hyphBreakBefore = hyphBuffer.AppendElements(flowEndInTextRun - start,
                                                 fallible);
+    hasSoftHyphenInSameWord = autoHyphBuffer.AppendElements(flowEndInTextRun - start,
+                                                            fallible);
     if (hyphBreakBefore) {
       provider.GetHyphenationBreaks(Range(start, flowEndInTextRun),
-                                    hyphBreakBefore);
+                                    hyphBreakBefore,
+                                    hasSoftHyphenInSameWord);
     }
   }
 

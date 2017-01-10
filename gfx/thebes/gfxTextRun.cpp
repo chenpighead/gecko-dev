@@ -861,12 +861,14 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
         GetAdjustedSpacing(this, bufferRange, aProvider, spacingBuffer);
     }
     bool hyphenBuffer[MEASUREMENT_BUFFER_SIZE];
+    bool hasSoftHyphenInSameWord[MEASUREMENT_BUFFER_SIZE];
     bool haveHyphenation = aProvider &&
         (aProvider->GetHyphensOption() == StyleHyphens::Auto ||
          (aProvider->GetHyphensOption() == StyleHyphens::Manual &&
           (mFlags & gfxTextRunFactory::TEXT_ENABLE_HYPHEN_BREAKS) != 0));
     if (haveHyphenation) {
-        aProvider->GetHyphenationBreaks(bufferRange, hyphenBuffer);
+        aProvider->GetHyphenationBreaks(bufferRange, hyphenBuffer,
+                                        hasSoftHyphenInSameWord);
     }
 
     gfxFloat width = 0;
@@ -896,7 +898,8 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
                 GetAdjustedSpacing(this, bufferRange, aProvider, spacingBuffer);
             }
             if (haveHyphenation) {
-                aProvider->GetHyphenationBreaks(bufferRange, hyphenBuffer);
+                aProvider->GetHyphenationBreaks(bufferRange, hyphenBuffer,
+                                                hasSoftHyphenInSameWord);
             }
         }
 
@@ -909,6 +912,8 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
             bool atNaturalBreak = mCharacterGlyphs[i].CanBreakBefore() == 1;
             bool atHyphenationBreak = !atNaturalBreak &&
                 haveHyphenation && hyphenBuffer[i - bufferRange.start];
+            bool atAutoHyphenWithSoftHyphenInSameWord = atHyphenationBreak &&
+                hasSoftHyphenInSameWord[i - bufferRange.start];
             bool atBreak = atNaturalBreak || atHyphenationBreak;
             bool wordWrapping =
                 aCanWordWrap && mCharacterGlyphs[i].IsClusterStart() &&
@@ -920,14 +925,24 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
                     hyphenatedAdvance += aProvider->GetHyphenWidth();
                 }
 
-                if (lastBreak < 0 || width + hyphenatedAdvance - trimmableAdvance <= aWidth) {
-                    // We can break here.
-                    lastBreak = i;
-                    lastBreakTrimmableChars = trimmableChars;
-                    lastBreakTrimmableAdvance = trimmableAdvance;
-                    lastBreakUsedHyphenation = atHyphenationBreak;
-                    *aBreakPriority = atBreak ? gfxBreakPriority::eNormalBreak
-                                              : gfxBreakPriority::eWordWrapBreak;
+                if (lastBreak < 0 ||
+                    width + hyphenatedAdvance - trimmableAdvance <= aWidth) {
+                    // CSS Text 3 - 6.1. Hyphenation Control: the hyphens property
+                    // Automatic hyphenation opportunities within a word must be
+                    // ignored if the word contains a conditional hyphen.
+                    // After breaking at such opportunities, if a portion of that
+                    // word is is still too long to fit on one line, an automatic
+                    // hyphenation opportunity may be used.
+                    if (lastBreak < 0 || !atAutoHyphenWithSoftHyphenInSameWord) {
+                        // We can break here.
+                        lastBreak = i;
+                        lastBreakTrimmableChars = trimmableChars;
+                        lastBreakTrimmableAdvance = trimmableAdvance;
+                        lastBreakUsedHyphenation = atHyphenationBreak;
+                        *aBreakPriority = atBreak
+                                          ? gfxBreakPriority::eNormalBreak
+                                          : gfxBreakPriority::eWordWrapBreak;
+                    }
                 }
 
                 width += advance;

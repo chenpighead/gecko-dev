@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>CSS Text 6.1. Hyphenation Control: the hyphens property</title>
+<link rel="author" title="Chun-Min (Jeremy) Chen" href="mailto:jeremychen@mozilla.com">
+<link rel="author" title="Mozilla" href="https://www.mozilla.org">
+<link rel="match" href="hyphenation-control-1-ref.html">
+<meta name="assert" content="Test checks that automatic hyphenation opportunities within a word
+must be ignored if the word contains a conditional hyphen (&shy; or U+00AD), in favor of the
+conditional hyphen(s). If after breaking at such opportunities, a portion of that word is still
+too long to fit on one line, an automatic hyphenation opportunity may be used.">
+<style>
+code {
+  display:block;
+  hyphens:auto;
+  border: 1px solid black;
+}
+</style>
+</head>
+<body lang="en-us">
+<!--
+  Hyphenation opportunities of the texts in this test are as follows,
+
+        frag[A]ilis[A]tic[S]ex[A]pi[A]ali
+
+  , where [A] is a automatic hyphenation, and [S] is a conditional hyphen.
+
+  In this test, we set width to somewhere between every pair of adjacent hyphenations,
+  then we see if lines break correctly.
+-->
+<code style="width:6ch;">
+fragilistic&shy;expiali
+</code>
+<br />
+<code style="width:10ch;">
+fragilistic&shy;expiali
+</code>
+<br />
+<code style="width:13ch;">
+fragilistic&shy;expiali
+</code>
+<br />
+<code style="width:15ch;">
+fragilistic&shy;expiali
+</code>
+</body>
+</html>

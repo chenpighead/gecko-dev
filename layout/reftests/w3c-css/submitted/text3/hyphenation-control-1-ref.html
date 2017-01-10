@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>CSS Text 6.1. Hyphenation Control: the hyphens property</title>
+<link rel="author" title="Chun-Min (Jeremy) Chen" href="mailto:jeremychen@mozilla.com">
+<link rel="author" title="Mozilla" href="https://www.mozilla.org">
+<style>
+code {
+  display:block;
+  hyphens:manual;
+  border: 1px solid black;
+}
+</style>
+</head>
+<body lang="en-us">
+<!--
+  Hyphenation opportunities of the texts in this test are as follows,
+
+        frag[A]ilis[A]tic[S]ex[A]pi[A]ali
+
+  , where [A] is a automatic hyphenation, and [S] is a conditional hyphen.
+
+  In this test, we set width to somewhere between every pair of adjacent hyphenations,
+  then we see if lines break correctly.
+-->
+<code style="width:6ch;">
+frag&shy;ilis&shy;tic&shy;expi&shy;ali
+</code>
+<br />
+<code style="width:10ch;">
+frag&shy;ilistic&shy;expiali
+</code>
+<br />
+<code style="width:13ch;">
+fragilistic&shy;expiali
+</code>
+<br />
+<code style="width:15ch;">
+fragilistic&shy;expiali
+</code>
+</body>
+</html>

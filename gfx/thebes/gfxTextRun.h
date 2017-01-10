@@ -189,7 +189,8 @@ public:
     public:
         // Detect hyphenation break opportunities in the given range; breaks
         // not at cluster boundaries will be ignored.
-        virtual void GetHyphenationBreaks(Range aRange, bool *aBreakBefore) = 0;
+        virtual void GetHyphenationBreaks(Range aRange, bool *aBreakBefore,
+                                          bool *aHasSoftHyphenInSameWord) = 0;
 
         // Returns the provider's hyphenation setting, so callers can decide
         // whether it is necessary to call GetHyphenationBreaks.
