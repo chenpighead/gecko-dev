@@ -3116,7 +3116,7 @@ public:
   virtual void GetSpacing(Range aRange, Spacing* aSpacing);
   virtual gfxFloat GetHyphenWidth();
   virtual void GetHyphenationBreaks(Range aRange, bool* aBreakBefore,
-                                    bool *aHasSoftHyphenInSameWord);
+                                    bool *aIsAutoWithSoftInSameWord);
   virtual StyleHyphens GetHyphensOption() {
     return mTextStyle->mHyphens;
   }
@@ -3555,12 +3555,12 @@ PropertyProvider::GetHyphenWidth()
 
 void
 PropertyProvider::GetHyphenationBreaks(Range aRange, bool* aBreakBefore,
-                                       bool *aHasSoftHyphenInSameWord)
+                                       bool *aIsAutoWithSoftInSameWord)
 {
   NS_PRECONDITION(IsInBounds(mStart, mLength, aRange), "Range out of bounds");
   NS_PRECONDITION(mLength != INT32_MAX, "Can't call this with undefined length");
 
-  memset(aHasSoftHyphenInSameWord, false, aRange.Length() * sizeof(bool));
+  memset(aIsAutoWithSoftInSameWord, false, aRange.Length() * sizeof(bool));
   if (!mTextStyle->WhiteSpaceCanWrap(mFrame) ||
       mTextStyle->mHyphens == StyleHyphens::None)
   {
@@ -3617,11 +3617,8 @@ PropertyProvider::GetHyphenationBreaks(Range aRange, bool* aBreakBefore,
     // soft hyphen in the same word.
     for (uint32_t i = 0; i < aRange.Length(); ++i) {
       if (!isWordBoundary[i] && i + 1 < aRange.Length()) {
+        bool hasSoftHyphenInSameWord = aBreakBefore[i];
         uint32_t j;
-        bool hasSoftHyphenInSameWord = false;
-        if (aBreakBefore[i]) {
-            hasSoftHyphenInSameWord = true;
-          }
         for (j = i + 1; !isWordBoundary[j] && j + 1 < aRange.Length(); j++) {
           if (aBreakBefore[j]) {
             hasSoftHyphenInSameWord = true;
@@ -3629,9 +3626,9 @@ PropertyProvider::GetHyphenationBreaks(Range aRange, bool* aBreakBefore,
         }
         for (uint32_t k = i; k <= j; k++) {
           if (mTextRun->CanHyphenateBefore(aRange.start + k)) {
-            // Don't set aHasSoftHyphenInSameWord for the soft hyphen position.
+            // Don't set aIsAutoWithSoftInSameWord for the soft hyphen position.
             if (!aBreakBefore[k] && hasSoftHyphenInSameWord) {
-              aHasSoftHyphenInSameWord[k] = true;
+              aIsAutoWithSoftInSameWord[k] = true;
             }
             aBreakBefore[k] = true;
           }

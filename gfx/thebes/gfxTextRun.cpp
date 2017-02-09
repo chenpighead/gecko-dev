@@ -861,14 +861,14 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
         GetAdjustedSpacing(this, bufferRange, aProvider, spacingBuffer);
     }
     bool hyphenBuffer[MEASUREMENT_BUFFER_SIZE];
-    bool hasSoftHyphenInSameWord[MEASUREMENT_BUFFER_SIZE];
+    bool isAutoWithSoftInSameWord [MEASUREMENT_BUFFER_SIZE];
     bool haveHyphenation = aProvider &&
         (aProvider->GetHyphensOption() == StyleHyphens::Auto ||
          (aProvider->GetHyphensOption() == StyleHyphens::Manual &&
           (mFlags & gfxTextRunFactory::TEXT_ENABLE_HYPHEN_BREAKS) != 0));
     if (haveHyphenation) {
         aProvider->GetHyphenationBreaks(bufferRange, hyphenBuffer,
-                                        hasSoftHyphenInSameWord);
+                                        isAutoWithSoftInSameWord);
     }
 
     gfxFloat width = 0;
@@ -880,6 +880,12 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
     int32_t lastBreak = -1;
     int32_t lastBreakTrimmableChars = -1;
     gfxFloat lastBreakTrimmableAdvance = -1;
+    // Cache the last candidate break
+    int32_t lastCandidateBreak = -1;
+    int32_t lastCandidateBreakTrimmableChars = -1;
+    gfxFloat lastCandidateBreakTrimmableAdvance = -1;
+    bool lastCandidateBreakUsedHyphenation = false;
+    gfxBreakPriority lastCandidateBreakPriority = gfxBreakPriority::eNoBreak;
     bool aborted = false;
     uint32_t end = aStart + aMaxLength;
     bool lastBreakUsedHyphenation = false;
@@ -899,7 +905,7 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
             }
             if (haveHyphenation) {
                 aProvider->GetHyphenationBreaks(bufferRange, hyphenBuffer,
-                                                hasSoftHyphenInSameWord);
+                                                isAutoWithSoftInSameWord);
             }
         }
 
@@ -913,7 +919,7 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
             bool atHyphenationBreak = !atNaturalBreak &&
                 haveHyphenation && hyphenBuffer[i - bufferRange.start];
             bool atAutoHyphenWithSoftHyphenInSameWord = atHyphenationBreak &&
-                hasSoftHyphenInSameWord[i - bufferRange.start];
+                isAutoWithSoftInSameWord[i - bufferRange.start];
             bool atBreak = atNaturalBreak || atHyphenationBreak;
             bool wordWrapping =
                 aCanWordWrap && mCharacterGlyphs[i].IsClusterStart() &&
@@ -927,22 +933,13 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
 
                 if (lastBreak < 0 ||
                     width + hyphenatedAdvance - trimmableAdvance <= aWidth) {
-                    // CSS Text 3 - 6.1. Hyphenation Control: the hyphens property
-                    // Automatic hyphenation opportunities within a word must be
-                    // ignored if the word contains a conditional hyphen.
-                    // After breaking at such opportunities, if a portion of that
-                    // word is is still too long to fit on one line, an automatic
-                    // hyphenation opportunity may be used.
-                    if (lastBreak < 0 || !atAutoHyphenWithSoftHyphenInSameWord) {
-                        // We can break here.
-                        lastBreak = i;
-                        lastBreakTrimmableChars = trimmableChars;
-                        lastBreakTrimmableAdvance = trimmableAdvance;
-                        lastBreakUsedHyphenation = atHyphenationBreak;
-                        *aBreakPriority = atBreak
-                                          ? gfxBreakPriority::eNormalBreak
-                                          : gfxBreakPriority::eWordWrapBreak;
-                    }
+                    lastBreak = i;
+                    lastBreakTrimmableChars = trimmableChars;
+                    lastBreakTrimmableAdvance = trimmableAdvance;
+                    lastBreakUsedHyphenation = atHyphenationBreak;
+                    *aBreakPriority = atBreak
+                                      ? gfxBreakPriority::eNormalBreak
+                                      : gfxBreakPriority::eWordWrapBreak;
                 }
 
                 width += advance;
@@ -950,7 +947,38 @@ gfxTextRun::BreakAndMeasureText(uint32_t aStart, uint32_t aMaxLength,
                 if (width - trimmableAdvance > aWidth) {
                     // No more text fits. Abort
                     aborted = true;
+                    printf_stderr("\n[jeremy] lastBreak = %d lastCandidateBreak = %d\n\n", lastBreak, lastCandidateBreak);
+
+                    if (lastCandidateBreak >= 0 && lastCandidateBreak != lastBreak) {
+                        lastBreak = lastCandidateBreak;
+                        lastBreakTrimmableChars = lastCandidateBreakTrimmableChars;
+                        lastBreakTrimmableAdvance = lastCandidateBreakTrimmableAdvance;
+                        lastBreakUsedHyphenation = lastCandidateBreakUsedHyphenation;
+                        *aBreakPriority = lastCandidateBreakPriority;
+                    }
                     break;
+                }
+                // There are various kinds of break opportunities:
+                // 1. word wrap break,
+                // 2. natural break,
+                // 3. soft hyphenation break,
+                // 4. auto hyphenation break without any soft hyphenation
+                //    in the same word,
+                // 5. auto hyphenation break with another soft hyphenation
+                //    in the same word.
+                // Allow all of them except the last one to be a candidate.
+                // So, we can ensure that we don't use an automatic
+                // hyphenation opportunity unless it is the only choice.
+                if (lastCandidateBreak != lastBreak &&
+                    (wordWrapping ||
+                     atNaturalBreak ||
+                     (atHyphenationBreak &&
+                      !atAutoHyphenWithSoftHyphenInSameWord))) {
+                    lastCandidateBreak = lastBreak;
+                    lastCandidateBreakTrimmableChars = lastBreakTrimmableChars;
+                    lastCandidateBreakTrimmableAdvance = lastBreakTrimmableAdvance;
+                    lastCandidateBreakUsedHyphenation = lastBreakUsedHyphenation;
+                    lastCandidateBreakPriority = *aBreakPriority;
                 }
             }
         }
