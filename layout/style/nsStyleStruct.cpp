@@ -3844,6 +3844,7 @@ nsStyleText::nsStyleText(const nsPresContext* aContext)
   , mTextAlignLast(NS_STYLE_TEXT_ALIGN_AUTO)
   , mTextAlignTrue(false)
   , mTextAlignLastTrue(false)
+  , mTextJustify(StyleTextJustify::Auto)
   , mTextTransform(NS_STYLE_TEXT_TRANSFORM_NONE)
   , mWhiteSpace(NS_STYLE_WHITESPACE_NORMAL)
   , mWordBreak(NS_STYLE_WORDBREAK_NORMAL)
@@ -3968,6 +3969,7 @@ nsStyleText::CalcDifference(const nsStyleText& aNewData) const
   if (!AreShadowArraysEqual(mTextShadow, aNewData.mTextShadow) ||
       mTextEmphasisStyle != aNewData.mTextEmphasisStyle ||
       mTextEmphasisStyleString != aNewData.mTextEmphasisStyleString ||
+      mTextJustify != aNewData.mTextJustify ||
       mWebkitTextStrokeWidth != aNewData.mWebkitTextStrokeWidth) {
     hint |= nsChangeHint_UpdateSubtreeOverflow |
             nsChangeHint_SchedulePaint |

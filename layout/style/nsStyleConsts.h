@@ -158,6 +158,17 @@ enum class StyleShapeSourceType : uint8_t {
   Box,
 };
 
+// text-justify
+enum class StyleTextJustify : uint8_t {
+  None,
+  Auto,
+  InterWord,
+  InterCharacter,
+  // For legacy reasons, UAs must also support the keyword "distribute" with
+  // the exact same meaning and behavior as "inter-character".
+  Distribute
+};
+
 // user-focus
 enum class StyleUserFocus : uint8_t {
   None,
