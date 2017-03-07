@@ -192,11 +192,118 @@ ${helpers.single_keyword("word-break",
                          spec="https://drafts.csswg.org/css-text/#propdef-word-break")}
 
 // TODO(pcwalton): Support `text-justify: distribute`.
-${helpers.single_keyword("text-justify",
-                         "auto none inter-word",
-                         products="servo",
-                         animatable=False,
-                         spec="https://drafts.csswg.org/css-text/#propdef-text-justify")}
+<%helpers:longhand name="text-justify" animatable="False"
+                   spec="https://drafts.csswg.org/css-text/#propdef-text-justify">
+    use std::fmt;
+    use style_traits::ToCss;
+    use values::HasViewportPercentage;
+    no_viewport_percentage!(SpecifiedValue);
+
+    #[derive(Debug, Clone, PartialEq)]
+    #[cfg_attr(feature = "servo", derive(HeapSizeOf))]
+    pub enum SpecifiedValue {
+        Auto,
+        None,
+        InterWord,
+        % if product == "gecko":
+            InterCharacter,
+            Distribute,
+        % endif
+    }
+
+    impl ToCss for SpecifiedValue {
+        fn to_css<W>(&self, dest: &mut W) -> fmt::Result where W: fmt::Write {
+            match *self {
+                SpecifiedValue::Auto => dest.write_str("auto"),
+                SpecifiedValue::None => dest.write_str("none"),
+                SpecifiedValue::InterWord => dest.write_str("inter-word"),
+                % if product == "gecko":
+                    SpecifiedValue::InterCharacter => dest.write_str("inter-character"),
+                    SpecifiedValue::Distribute => dest.write_str("distribute"),
+                %endif
+            }
+        }
+    }
+
+    pub mod computed_value {
+        #[derive(Debug, Clone, Copy, PartialEq)]
+        #[cfg_attr(feature = "servo", derive(HeapSizeOf))]
+        pub enum T {
+            Auto,
+            None,
+            InterWord,
+            % if product == "gecko":
+                InterCharacter,
+            % endif
+        }
+    }
+
+    impl ToCss for computed_value::T {
+        fn to_css<W>(&self, dest: &mut W) -> fmt::Result where W: fmt::Write {
+            match *self {
+                computed_value::T::Auto => dest.write_str("auto"),
+                computed_value::T::None => dest.write_str("none"),
+                computed_value::T::InterWord => dest.write_str("inter-word"),
+                % if product == "gecko":
+                    computed_value::T::InterCharacter => dest.write_str("inter-character"),
+                % endif
+            }
+        }
+    }
+
+    #[inline]
+    pub fn get_initial_value() -> computed_value::T {
+        computed_value::T::Auto
+    }
+
+    impl ToComputedValue for SpecifiedValue {
+        type ComputedValue = computed_value::T;
+
+        #[inline]
+        fn to_computed_value(&self, _context: &Context) -> computed_value::T {
+            match *self {
+                % if product == "gecko":
+                    SpecifiedValue::InterCharacter => computed_value::T::InterCharacter,
+                    SpecifiedValue::Distribute => computed_value::T::InterCharacter,
+                % endif
+                % for value in "Auto None InterWord".split():
+                    SpecifiedValue::${value} => computed_value::T::${value},
+                % endfor
+            }
+        }
+        #[inline]
+        fn from_computed_value(computed: &computed_value::T) -> Self {
+            match *computed {
+                % if product == "gecko":
+                    computed_value::T::InterCharacter => SpecifiedValue::InterCharacter,
+                % endif
+                % for value in "Auto None InterWord".split():
+                    computed_value::T::${value} => SpecifiedValue::${value},
+                % endfor
+            }
+        }
+    }
+
+    pub fn parse(_context: &ParserContext, input: &mut Parser) -> Result<SpecifiedValue, ()> {
+        % if product == "gecko":
+            if input.try(|input| input.expect_ident_matching("inter-character")).is_ok() {
+                Ok(SpecifiedValue::InterCharacter)
+            } else if input.try(|input| input.expect_ident_matching("distribute")).is_ok() {
+                Ok(SpecifiedValue::Distribute)
+            }
+        % endif
+        if input.try(|input| input.expect_ident_matching("auto")).is_ok() {
+            Ok(SpecifiedValue::Auto)
+        } else if input.try(|input| input.expect_ident_matching("none")).is_ok() {
+            Ok(SpecifiedValue::None)
+        } else if input.try(|input| input.expect_ident_matching("inter-word")).is_ok() {
+            Ok(SpecifiedValue::InterWord)
+        } else {
+            // Unknown keywords.
+            Err(())
+        }
+    }
+</%helpers:longhand>
 
 ${helpers.single_keyword("text-align-last",
                          "auto start end left right center justify",

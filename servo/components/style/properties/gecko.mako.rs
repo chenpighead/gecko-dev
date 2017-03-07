@@ -2611,7 +2611,7 @@ fn static_assert() {
 
 <%self:impl_trait style_struct_name="InheritedText"
                   skip_longhands="text-align text-emphasis-style text-shadow line-height letter-spacing word-spacing
-                                  -webkit-text-stroke-width text-emphasis-position -moz-tab-size">
+                                  -webkit-text-stroke-width text-emphasis-position -moz-tab-size text-justify">
 
     <% text_align_keyword = Keyword("text-align", "start end left right center justify -moz-center -moz-left " +
                                                   "-moz-right match-parent char") %>
@@ -2793,6 +2793,11 @@ fn static_assert() {
     }
 
     <%call expr="impl_coord_copy('_moz_tab_size', 'mTabSize')"></%call>
+
+    <% text_justify_keyword = Keyword("text-justify", "Auto None InterWord InterCharacter",
+                                                      gecko_enum_prefix="StyleTextJustify") %>
+
+    ${impl_keyword('text_justify', 'mTextJustify', text_justify_keyword, need_clone=False)}
 
 </%self:impl_trait>
 
