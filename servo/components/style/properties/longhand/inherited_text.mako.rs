@@ -202,24 +202,24 @@ ${helpers.single_keyword("word-break",
     #[derive(Debug, Clone, PartialEq)]
     #[cfg_attr(feature = "servo", derive(HeapSizeOf))]
     pub enum SpecifiedValue {
-        Auto,
+        auto,
         None,
         InterWord,
         % if product == "gecko":
-            InterCharacter,
-            Distribute,
+            inter_character,
+            distribute,
         % endif
     }
 
     impl ToCss for SpecifiedValue {
         fn to_css<W>(&self, dest: &mut W) -> fmt::Result where W: fmt::Write {
             match *self {
-                SpecifiedValue::Auto => dest.write_str("auto"),
+                SpecifiedValue::auto => dest.write_str("auto"),
                 SpecifiedValue::None => dest.write_str("none"),
                 SpecifiedValue::InterWord => dest.write_str("inter-word"),
                 % if product == "gecko":
-                    SpecifiedValue::InterCharacter => dest.write_str("inter-character"),
-                    SpecifiedValue::Distribute => dest.write_str("distribute"),
+                    SpecifiedValue::inter_character => dest.write_str("inter-character"),
+                    SpecifiedValue::distribute => dest.write_str("distribute"),
                 %endif
             }
         }
@@ -229,11 +229,11 @@ ${helpers.single_keyword("word-break",
         #[derive(Debug, Clone, Copy, PartialEq)]
         #[cfg_attr(feature = "servo", derive(HeapSizeOf))]
         pub enum T {
-            Auto,
-            None,
-            InterWord,
+            auto,
+            none,
+            inter_word,
             % if product == "gecko":
-                InterCharacter,
+                inter_character,
             % endif
         }
     }
@@ -241,11 +241,11 @@ ${helpers.single_keyword("word-break",
     impl ToCss for computed_value::T {
         fn to_css<W>(&self, dest: &mut W) -> fmt::Result where W: fmt::Write {
             match *self {
-                computed_value::T::Auto => dest.write_str("auto"),
-                computed_value::T::None => dest.write_str("none"),
-                computed_value::T::InterWord => dest.write_str("inter-word"),
+                computed_value::T::auto => dest.write_str("auto"),
+                computed_value::T::none => dest.write_str("none"),
+                computed_value::T::inter_word => dest.write_str("inter-word"),
                 % if product == "gecko":
-                    computed_value::T::InterCharacter => dest.write_str("inter-character"),
+                    computed_value::T::inter_character => dest.write_str("inter-character"),
                 % endif
             }
         }
@@ -253,7 +253,7 @@ ${helpers.single_keyword("word-break",
 
     #[inline]
     pub fn get_initial_value() -> computed_value::T {
-        computed_value::T::Auto
+        computed_value::T::auto
     }
 
     impl ToComputedValue for SpecifiedValue {
@@ -263,10 +263,10 @@ ${helpers.single_keyword("word-break",
         fn to_computed_value(&self, _context: &Context) -> computed_value::T {
             match *self {
                 % if product == "gecko":
-                    SpecifiedValue::InterCharacter => computed_value::T::InterCharacter,
-                    SpecifiedValue::Distribute => computed_value::T::InterCharacter,
+                    SpecifiedValue::inter_character => computed_value::T::inter_character,
+                    SpecifiedValue::distribute => computed_value::T::inter_character,
                 % endif
-                % for value in "Auto None InterWord".split():
+                % for value in "auto none inter_word".split():
                     SpecifiedValue::${value} => computed_value::T::${value},
                 % endfor
             }
@@ -275,9 +275,9 @@ ${helpers.single_keyword("word-break",
         fn from_computed_value(computed: &computed_value::T) -> Self {
             match *computed {
                 % if product == "gecko":
-                    computed_value::T::InterCharacter => SpecifiedValue::InterCharacter,
+                    computed_value::T::inter_character => SpecifiedValue::inter_character,
                 % endif
-                % for value in "Auto None InterWord".split():
+                % for value in "auto none inter_word".split():
                     computed_value::T::${value} => SpecifiedValue::${value},
                 % endfor
             }
@@ -287,17 +287,17 @@ ${helpers.single_keyword("word-break",
     pub fn parse(_context: &ParserContext, input: &mut Parser) -> Result<SpecifiedValue, ()> {
         % if product == "gecko":
             if input.try(|input| input.expect_ident_matching("inter-character")).is_ok() {
-                Ok(SpecifiedValue::InterCharacter)
+                return Ok(SpecifiedValue::inter_character);
             } else if input.try(|input| input.expect_ident_matching("distribute")).is_ok() {
-                Ok(SpecifiedValue::Distribute)
+                return Ok(SpecifiedValue::distribute);
             }
         % endif
         if input.try(|input| input.expect_ident_matching("auto")).is_ok() {
-            Ok(SpecifiedValue::Auto)
+            Ok(SpecifiedValue::auto)
         } else if input.try(|input| input.expect_ident_matching("none")).is_ok() {
-            Ok(SpecifiedValue::None)
+            Ok(SpecifiedValue::none)
         } else if input.try(|input| input.expect_ident_matching("inter-word")).is_ok() {
-            Ok(SpecifiedValue::InterWord)
+            Ok(SpecifiedValue::inter_word)
         } else {
             // Unknown keywords.
             Err(())

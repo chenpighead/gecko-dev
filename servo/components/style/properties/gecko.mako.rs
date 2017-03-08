@@ -2794,7 +2794,7 @@ fn static_assert() {
 
     <%call expr="impl_coord_copy('_moz_tab_size', 'mTabSize')"></%call>
 
-    <% text_justify_keyword = Keyword("text-justify", "Auto None InterWord InterCharacter",
+    <% text_justify_keyword = Keyword("text-justify", "auto none inter_word inter_character",
                                                       gecko_enum_prefix="StyleTextJustify") %>
 
     ${impl_keyword('text_justify', 'mTextJustify', text_justify_keyword, need_clone=False)}

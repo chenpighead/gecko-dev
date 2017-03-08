@@ -915,7 +915,7 @@ impl InlineFlow {
         // necessary.
         let mut inline_start_position_for_fragment = line.bounds.start.i + indentation;
         match line_align {
-            text_align::T::justify if !is_last_line && text_justify != text_justify::T::None => {
+            text_align::T::justify if !is_last_line && text_justify != text_justify::T::none => {
                 InlineFlow::justify_inline_fragments(fragments, line, slack_inline_size)
             }
             text_align::T::justify | text_align::T::start => {}
