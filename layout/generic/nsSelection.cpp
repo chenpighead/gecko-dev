@@ -6090,7 +6090,11 @@ Selection::PostScrollSelectionIntoViewEvent(
   RefPtr<ScrollSelectionIntoViewEvent> ev =
       new ScrollSelectionIntoViewEvent(this, aRegion, aVertical, aHorizontal,
                                        aFlags);
-  nsresult rv = NS_DispatchToCurrentThread(ev);
+  nsresult rv =
+    this->GetParentObject()->Dispatch("ScrollSelectionIntoViewEvent",
+                                      TaskCategory::Other,
+                                      ev.forget());
+
   NS_ENSURE_SUCCESS(rv, rv);
 
   mScrollEvent = ev;
