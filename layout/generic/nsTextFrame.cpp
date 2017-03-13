@@ -3158,22 +3158,22 @@ public:
 
   void InitializeForMeasure();
 
-  virtual void GetSpacing(Range aRange, Spacing* aSpacing);
-  virtual gfxFloat GetHyphenWidth();
-  virtual void GetHyphenationBreaks(Range aRange, HyphenType* aBreakBefore);
-  virtual StyleHyphens GetHyphensOption() {
+  void GetSpacing(Range aRange, Spacing* aSpacing) const final;
+  gfxFloat GetHyphenWidth() const final;
+  void GetHyphenationBreaks(Range aRange, HyphenType* aBreakBefore) const final;
+  StyleHyphens GetHyphensOption() const final {
     return mTextStyle->mHyphens;
   }
 
-  virtual already_AddRefed<DrawTarget> GetDrawTarget() {
+  already_AddRefed<DrawTarget> GetDrawTarget() const final {
     return CreateReferenceDrawTarget(GetFrame());
   }
 
-  virtual uint32_t GetAppUnitsPerDevUnit() {
+  uint32_t GetAppUnitsPerDevUnit() const final {
     return mTextRun->GetAppUnitsPerDevUnit();
   }
 
-  void GetSpacingInternal(Range aRange, Spacing* aSpacing, bool aIgnoreTabs);
+  void GetSpacingInternal(Range aRange, Spacing* aSpacing, bool aIgnoreTabs) const;
 
   /**
    * Compute the justification information in given DOM range, return
@@ -3182,7 +3182,7 @@ public:
   JustificationInfo ComputeJustification(
     Range aRange, nsTArray<JustificationAssignment>* aAssignments = nullptr);
 
-  nsTextFrame* GetFrame() { return mFrame; }
+  nsTextFrame* GetFrame() const { return mFrame; }
   // This may not be equal to the frame offset/length in because we may have
   // adjusted for whitespace trimming according to the state bits set in the frame
   // (for the static provider)
@@ -3192,9 +3192,9 @@ public:
     NS_ASSERTION(mLength != INT32_MAX, "Length not known");
     return mLength;
   }
-  const nsTextFragment* GetFragment() { return mFrag; }
+  const nsTextFragment* GetFragment() const { return mFrag; }
 
-  gfxFontGroup* GetFontGroup() {
+  gfxFontGroup* GetFontGroup() const {
     if (!mFontGroup)
       InitFontGroupAndFontMetrics();
     return mFontGroup;
@@ -3206,14 +3206,14 @@ public:
     return mFontMetrics;
   }
 
-  void CalcTabWidths(Range aTransformedRange, gfxFloat aTabWidth);
+  void CalcTabWidths(Range aTransformedRange, gfxFloat aTabWidth) const;
 
-  const gfxSkipCharsIterator& GetEndHint() { return mTempIterator; }
+  const gfxSkipCharsIterator& GetEndHint() const { return mTempIterator; }
 
 protected:
   void SetupJustificationSpacing(bool aPostReflow);
 
-  void InitFontGroupAndFontMetrics() {
+  void InitFontGroupAndFontMetrics() const {
     float inflation = (mWhichTextRun == nsTextFrame::eInflated)
       ? mFrame->GetFontSizeInflation() : 1.0f;
     mFontGroup = GetFontGroupForFrame(mFrame, inflation,
@@ -3221,8 +3221,8 @@ protected:
   }
 
   RefPtr<gfxTextRun>    mTextRun;
-  gfxFontGroup*         mFontGroup;
-  RefPtr<nsFontMetrics> mFontMetrics;
+  mutable gfxFontGroup*         mFontGroup;
+  mutable RefPtr<nsFontMetrics> mFontMetrics;
   const nsStyleText*    mTextStyle;
   const nsTextFragment* mFrag;
   nsIFrame*             mLineContainer;
@@ -3231,17 +3231,17 @@ protected:
   gfxSkipCharsIterator  mTempIterator;
 
   // Either null, or pointing to the frame's TabWidthProperty.
-  TabWidthStore*        mTabWidths;
+  mutable TabWidthStore*        mTabWidths;
   // How far we've done tab-width calculation; this is ONLY valid when
   // mTabWidths is nullptr (otherwise rely on mTabWidths->mLimit instead).
   // It's a DOM offset relative to the current frame's offset.
-  uint32_t              mTabWidthsAnalyzedLimit;
+  mutable uint32_t              mTabWidthsAnalyzedLimit;
 
   int32_t               mLength; // DOM string length, may be INT32_MAX
   gfxFloat              mWordSpacing;     // space for each whitespace char
   gfxFloat              mLetterSpacing;   // space for each letter
-  gfxFloat              mHyphenWidth;
-  gfxFloat              mOffsetFromBlockOriginForTabs;
+  mutable gfxFloat              mHyphenWidth;
+  mutable gfxFloat              mOffsetFromBlockOriginForTabs;
 
   // The values in mJustificationSpacings corresponds to unskipped
   // characters start from mJustificationArrayStart.
@@ -3377,7 +3377,7 @@ PropertyProvider::ComputeJustification(
 
 // aStart, aLength in transformed string offsets
 void
-PropertyProvider::GetSpacing(Range aRange, Spacing* aSpacing)
+PropertyProvider::GetSpacing(Range aRange, Spacing* aSpacing) const
 {
   GetSpacingInternal(aRange, aSpacing,
                      (mTextRun->GetFlags() & nsTextFrameUtils::TEXT_HAS_TAB) == 0);
@@ -3416,7 +3416,7 @@ ComputeTabWidthAppUnits(nsIFrame* aFrame, gfxTextRun* aTextRun)
 
 void
 PropertyProvider::GetSpacingInternal(Range aRange, Spacing* aSpacing,
-                                     bool aIgnoreTabs)
+                                     bool aIgnoreTabs) const
 {
   NS_PRECONDITION(IsInBounds(mStart, mLength, aRange), "Range out of bounds");
 
@@ -3506,7 +3506,7 @@ AdvanceToNextTab(gfxFloat aX, nsIFrame* aFrame,
 }
 
 void
-PropertyProvider::CalcTabWidths(Range aRange, gfxFloat aTabWidth)
+PropertyProvider::CalcTabWidths(Range aRange, gfxFloat aTabWidth) const
 {
   MOZ_ASSERT(aTabWidth > 0);
 
@@ -3588,7 +3588,7 @@ PropertyProvider::CalcTabWidths(Range aRange, gfxFloat aTabWidth)
 }
 
 gfxFloat
-PropertyProvider::GetHyphenWidth()
+PropertyProvider::GetHyphenWidth() const
 {
   if (mHyphenWidth < 0) {
     mHyphenWidth = GetFontGroup()->GetHyphenWidth(this);
@@ -3607,7 +3607,7 @@ IS_HYPHEN(char16_t u)
 }
 
 void
-PropertyProvider::GetHyphenationBreaks(Range aRange, HyphenType* aBreakBefore)
+PropertyProvider::GetHyphenationBreaks(Range aRange, HyphenType* aBreakBefore) const
 {
   NS_PRECONDITION(IsInBounds(mStart, mLength, aRange), "Range out of bounds");
   NS_PRECONDITION(mLength != INT32_MAX, "Can't call this with undefined length");
