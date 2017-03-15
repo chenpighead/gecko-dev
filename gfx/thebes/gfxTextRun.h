@@ -850,13 +850,8 @@ public:
         return MakeTextRun(aString, aLength, &params, aFlags, aMFR);
     }
 
-    /**
-     * Get the (possibly-cached) width of the hyphen character.
-     * The aCtx and aAppUnitsPerDevUnit parameters will be used only if
-     * needed to initialize the cached hyphen width; otherwise they are
-     * ignored.
-     */
-    gfxFloat GetHyphenWidth(gfxTextRun::PropertyProvider* aProvider);
+    // Get the (possibly-cached) width of the hyphen character.
+    gfxFloat GetHyphenWidth(const gfxTextRun::PropertyProvider* aProvider);
 
     /**
      * Make a text run representing a single hyphen character.
