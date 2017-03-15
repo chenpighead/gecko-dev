@@ -3195,14 +3195,16 @@ public:
   const nsTextFragment* GetFragment() const { return mFrag; }
 
   gfxFontGroup* GetFontGroup() const {
-    if (!mFontGroup)
+    if (!mFontGroup) {
       InitFontGroupAndFontMetrics();
+    }
     return mFontGroup;
   }
 
   nsFontMetrics* GetFontMetrics() const {
-    if (!mFontMetrics)
+    if (!mFontMetrics) {
       InitFontGroupAndFontMetrics();
+    }
     return mFontMetrics;
   }
 
@@ -3220,36 +3222,36 @@ protected:
                                       getter_AddRefs(mFontMetrics));
   }
 
-  const RefPtr<gfxTextRun>  mTextRun;
-  mutable gfxFontGroup* mFontGroup;
-  mutable RefPtr<nsFontMetrics> mFontMetrics;
-  const nsStyleText*    mTextStyle;
-  const nsTextFragment* mFrag;
-  const nsIFrame*       mLineContainer;
-  const nsTextFrame*    mFrame;
-  gfxSkipCharsIterator  mStart;  // Offset in original and transformed string
-  const gfxSkipCharsIterator  mTempIterator;
+  const RefPtr<gfxTextRun>        mTextRun;
+  mutable gfxFontGroup*           mFontGroup;
+  mutable RefPtr<nsFontMetrics>   mFontMetrics;
+  const nsStyleText*              mTextStyle;
+  const nsTextFragment*           mFrag;
+  const nsIFrame*                 mLineContainer;
+  const nsTextFrame*              mFrame;
+  gfxSkipCharsIterator            mStart;  // Offset in original and transformed string
+  const gfxSkipCharsIterator      mTempIterator;
 
   // Either null, or pointing to the frame's TabWidthProperty.
-  mutable TabWidthStore*  mTabWidths;
+  mutable TabWidthStore*          mTabWidths;
   // How far we've done tab-width calculation; this is ONLY valid when
   // mTabWidths is nullptr (otherwise rely on mTabWidths->mLimit instead).
   // It's a DOM offset relative to the current frame's offset.
-  mutable uint32_t      mTabWidthsAnalyzedLimit;
+  mutable uint32_t                mTabWidthsAnalyzedLimit;
 
-  int32_t               mLength; // DOM string length, may be INT32_MAX
-  const gfxFloat        mWordSpacing;     // space for each whitespace char
-  const gfxFloat        mLetterSpacing;   // space for each letter
-  mutable gfxFloat      mHyphenWidth;
-  mutable gfxFloat      mOffsetFromBlockOriginForTabs;
+  int32_t                         mLength;  // DOM string length, may be INT32_MAX
+  const gfxFloat                  mWordSpacing; // space for each whitespace char
+  const gfxFloat                  mLetterSpacing; // space for each letter
+  mutable gfxFloat                mHyphenWidth;
+  mutable gfxFloat                mOffsetFromBlockOriginForTabs;
 
   // The values in mJustificationSpacings corresponds to unskipped
   // characters start from mJustificationArrayStart.
-  uint32_t              mJustificationArrayStart;
-  nsTArray<Spacing>     mJustificationSpacings;
+  uint32_t                        mJustificationArrayStart;
+  nsTArray<Spacing>               mJustificationSpacings;
 
-  const bool            mReflowing;
-  const nsTextFrame::TextRunType mWhichTextRun;
+  const bool                      mReflowing;
+  const nsTextFrame::TextRunType  mWhichTextRun;
 };
 
 /**
@@ -3699,8 +3701,9 @@ PropertyProvider::SetupJustificationSpacing(bool aPostReflow)
 {
   NS_PRECONDITION(mLength != INT32_MAX, "Can't call this with undefined length");
 
-  if (!(mFrame->GetStateBits() & TEXT_JUSTIFICATION_ENABLED))
+  if (!(mFrame->GetStateBits() & TEXT_JUSTIFICATION_ENABLED)) {
     return;
+  }
 
   gfxSkipCharsIterator start(mStart), end(mStart);
   // We can't just use our mLength here; when InitializeForDisplay is
