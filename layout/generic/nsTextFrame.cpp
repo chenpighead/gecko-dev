@@ -786,7 +786,7 @@ static bool IsSpaceCombiningSequenceTail(const nsTextFragment* aFrag, uint32_t a
 // Check whether aPos is a space for CSS 'word-spacing' purposes
 static bool
 IsCSSWordSpacingSpace(const nsTextFragment* aFrag, uint32_t aPos,
-                      nsTextFrame* aFrame, const nsStyleText* aStyleText)
+                      const nsTextFrame* aFrame, const nsStyleText* aStyleText)
 {
   NS_ASSERTION(aPos < aFrag->GetLength(), "No text for IsSpace!");
 
@@ -1966,7 +1966,7 @@ BuildTextRunsScanner::GetNextBreakBeforeFrame(uint32_t* aIndex)
 }
 
 static gfxFontGroup*
-GetFontGroupForFrame(nsIFrame* aFrame, float aFontSizeInflation,
+GetFontGroupForFrame(const nsIFrame* aFrame, float aFontSizeInflation,
                      nsFontMetrics** aOutFontMetrics = nullptr)
 {
   RefPtr<nsFontMetrics> metrics =
@@ -1985,7 +1985,7 @@ GetFontGroupForFrame(nsIFrame* aFrame, float aFontSizeInflation,
 }
 
 static already_AddRefed<DrawTarget>
-CreateReferenceDrawTarget(nsTextFrame* aTextFrame)
+CreateReferenceDrawTarget(const nsTextFrame* aTextFrame)
 {
   RefPtr<gfxContext> ctx =
     aTextFrame->PresContext()->PresShell()->CreateReferenceRenderingContext();
@@ -2922,7 +2922,7 @@ GetEndOfTrimmedText(const nsTextFragment* aFrag, const nsStyleText* aStyleText,
 
 nsTextFrame::TrimmedOffsets
 nsTextFrame::GetTrimmedOffsets(const nsTextFragment* aFrag,
-                               bool aTrimAfter, bool aPostReflow)
+                               bool aTrimAfter, bool aPostReflow) const
 {
   NS_ASSERTION(mTextRun, "Need textrun here");
   if (aPostReflow) {
@@ -3064,7 +3064,7 @@ static int32_t FindChar(const nsTextFragment* frag,
   return -1;
 }
 
-static bool IsChineseOrJapanese(nsTextFrame* aFrame)
+static bool IsChineseOrJapanese(const nsTextFrame* aFrame)
 {
   if (aFrame->ShouldSuppressLineBreak()) {
     // Always treat ruby as CJ language so that those characters can
@@ -3182,7 +3182,7 @@ public:
   JustificationInfo ComputeJustification(
     Range aRange, nsTArray<JustificationAssignment>* aAssignments = nullptr);
 
-  nsTextFrame* GetFrame() const { return mFrame; }
+  const nsTextFrame* GetFrame() const { return mFrame; }
   // This may not be equal to the frame offset/length in because we may have
   // adjusted for whitespace trimming according to the state bits set in the frame
   // (for the static provider)
@@ -3220,15 +3220,15 @@ protected:
                                       getter_AddRefs(mFontMetrics));
   }
 
-  RefPtr<gfxTextRun>    mTextRun;
+  const RefPtr<gfxTextRun>  mTextRun;
   mutable gfxFontGroup* mFontGroup;
   mutable RefPtr<nsFontMetrics> mFontMetrics;
   const nsStyleText*    mTextStyle;
   const nsTextFragment* mFrag;
-  nsIFrame*             mLineContainer;
-  nsTextFrame*          mFrame;
+  const nsIFrame*       mLineContainer;
+  const nsTextFrame*    mFrame;
   gfxSkipCharsIterator  mStart;  // Offset in original and transformed string
-  gfxSkipCharsIterator  mTempIterator;
+  const gfxSkipCharsIterator  mTempIterator;
 
   // Either null, or pointing to the frame's TabWidthProperty.
   mutable TabWidthStore*  mTabWidths;
@@ -3238,8 +3238,8 @@ protected:
   mutable uint32_t      mTabWidthsAnalyzedLimit;
 
   int32_t               mLength; // DOM string length, may be INT32_MAX
-  gfxFloat              mWordSpacing;     // space for each whitespace char
-  gfxFloat              mLetterSpacing;   // space for each letter
+  const gfxFloat        mWordSpacing;     // space for each whitespace char
+  const gfxFloat        mLetterSpacing;   // space for each letter
   mutable gfxFloat      mHyphenWidth;
   mutable gfxFloat      mOffsetFromBlockOriginForTabs;
 
@@ -3248,8 +3248,8 @@ protected:
   uint32_t              mJustificationArrayStart;
   nsTArray<Spacing>     mJustificationSpacings;
 
-  bool                  mReflowing;
-  nsTextFrame::TextRunType mWhichTextRun;
+  const bool            mReflowing;
+  const nsTextFrame::TextRunType mWhichTextRun;
 };
 
 /**
@@ -3393,7 +3393,7 @@ CanAddSpacingAfter(const gfxTextRun* aTextRun, uint32_t aOffset)
 }
 
 static gfxFloat
-ComputeTabWidthAppUnits(nsIFrame* aFrame, gfxTextRun* aTextRun)
+ComputeTabWidthAppUnits(const nsIFrame* aFrame, gfxTextRun* aTextRun)
 {
   const nsStyleText* textStyle = aFrame->StyleText();
   if (textStyle->mTabSize.GetUnit() != eStyleUnit_Factor) {
@@ -3495,8 +3495,7 @@ PropertyProvider::GetSpacingInternal(Range aRange, Spacing* aSpacing,
 
 // aX and the result are in whole appunits.
 static gfxFloat
-AdvanceToNextTab(gfxFloat aX, nsIFrame* aFrame,
-                 gfxTextRun* aTextRun, gfxFloat aTabWidth)
+AdvanceToNextTab(gfxFloat aX, gfxFloat aTabWidth)
 {
 
   // Advance aX to the next multiple of *aCachedTabWidth. We must advance
@@ -3565,7 +3564,7 @@ PropertyProvider::CalcTabWidths(Range aRange, gfxFloat aTabWidth) const
           mFrame->Properties().Set(TabWidthProperty(), mTabWidths);
         }
         double nextTab = AdvanceToNextTab(mOffsetFromBlockOriginForTabs,
-                mFrame, mTextRun, aTabWidth);
+                                          aTabWidth);
         mTabWidths->mWidths.AppendElement(TabWidth(i - startOffset,
                 NSToIntRound(nextTab - mOffsetFromBlockOriginForTabs)));
         mOffsetFromBlockOriginForTabs = nextTab;
@@ -8473,7 +8472,7 @@ nsTextFrame::AddInlineMinISizeForFlow(nsRenderingContext *aRenderingContext,
         tabWidth = ComputeTabWidthAppUnits(this, textRun);
       }
       gfxFloat afterTab =
-        AdvanceToNextTab(aData->mCurrentLine, this, textRun, tabWidth);
+        AdvanceToNextTab(aData->mCurrentLine, tabWidth);
       aData->mCurrentLine = nscoord(afterTab + spacing.mAfter);
       wordStart = i + 1;
     } else if (i < flowEndInTextRun ||
@@ -8636,7 +8635,7 @@ nsTextFrame::AddInlinePrefISizeForFlow(nsRenderingContext *aRenderingContext,
         tabWidth = ComputeTabWidthAppUnits(this, textRun);
       }
       gfxFloat afterTab =
-        AdvanceToNextTab(aData->mCurrentLine, this, textRun, tabWidth);
+        AdvanceToNextTab(aData->mCurrentLine, tabWidth);
       aData->mCurrentLine = nscoord(afterTab + spacing.mAfter);
       aData->mLineIsEmpty = false;
       lineStart = i + 1;
