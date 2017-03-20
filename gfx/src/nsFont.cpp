@@ -43,6 +43,7 @@ nsFont::Init()
   sizeAdjust = -1.0f;
   kerning = NS_FONT_KERNING_AUTO;
   synthesis = NS_FONT_SYNTHESIS_WEIGHT | NS_FONT_SYNTHESIS_STYLE;
+  languageOverride = NO_FONT_LANGUAGE_OVERRIDE;
 
   variantAlternates = 0;
   variantCaps = NS_FONT_VARIANT_CAPS_NORMAL;

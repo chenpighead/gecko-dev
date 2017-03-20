@@ -1799,18 +1799,30 @@ nsComputedDOMStyle::DoGetFontKerning()
   return val.forget();
 }
 
+static nsString
+SerializeLanguageOverride(uint32_t aLanguageOverride)
+{
+  nsAutoString result;
+  for (uint32_t i = 0; i < 4 ; i++) {
+    char16_t ch = aLanguageOverride >> 24;
+    MOZ_ASSERT(nsCRT::IsAscii(ch),
+               "Invalid tags, we should've handled this during computing!");
+    result.Append(ch);
+    aLanguageOverride = aLanguageOverride << 8;
+  }
+  return result;
+}
+
 already_AddRefed<CSSValue>
 nsComputedDOMStyle::DoGetFontLanguageOverride()
 {
   RefPtr<nsROCSSPrimitiveValue> val = new nsROCSSPrimitiveValue;
 
   const nsStyleFont* font = StyleFont();
-  if (font->mFont.languageOverride.IsEmpty()) {
+  if (font->mFont.languageOverride == 0) {
     val->SetIdent(eCSSKeyword_normal);
   } else {
-    nsAutoString str;
-    nsStyleUtil::AppendEscapedCSSString(font->mFont.languageOverride, str);
-    val->SetString(str);
+    val->SetString(SerializeLanguageOverride(font->mFont.languageOverride));
   }
   return val.forget();
 }
