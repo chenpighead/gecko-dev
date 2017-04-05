@@ -2775,6 +2775,32 @@ fn static_assert() {
     }
 </%self:impl_trait>
 
+<%self:impl_trait style_struct_name="InheritedBox"
+                  skip_longhands="image-orientation">
+
+    pub fn set_image_orientation(&mut self, v: longhands::image_orientation::computed_value::T) {
+        use properties::longhands::image_orientation::computed_value::T;
+        match v {
+            T::FromImage => {
+                unsafe {
+                    bindings::Gecko_SetImageOrientationAsFromImage(&mut self.gecko);
+                }
+            },
+            T::AngleWithFlipped(ref angle, flipped) => {
+                unsafe {
+                    bindings::Gecko_SetImageOrientation(&mut self.gecko, angle.radians() as f64, flipped);
+                }
+            }
+        }
+    }
+
+    pub fn copy_image_orientation_from(&mut self, other: &Self) {
+        unsafe {
+            bindings::Gecko_CopyImageOrientationFrom(&mut self.gecko, &other.gecko);
+        }
+    }
+
+</%self:impl_trait>
 
 <%self:impl_trait style_struct_name="InheritedTable"
                   skip_longhands="border-spacing">
