@@ -83,7 +83,7 @@ ${helpers.single_keyword("image-rendering",
 
 // Image Orientation
 <%helpers:longhand name="image-orientation"
-                   products="None"
+                   products="gecko"
                    animation_type="none"
     spec="https://drafts.csswg.org/css-images/#propdef-image-orientation, \
       /// additional values in https://developer.mozilla.org/en-US/docs/Web/CSS/image-orientation">
