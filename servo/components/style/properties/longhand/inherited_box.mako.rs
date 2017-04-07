@@ -140,16 +140,26 @@ ${helpers.single_keyword("image-rendering",
         computed_value::T::AngleWithFlipped(computed::Angle::zero(), false)
     }
 
-    // According to CSS Content Module Level 3:
-    // The computed value of the property is calculated by rounding the specified angle
-    // to the nearest quarter-turn, rounding away from 0, then moduloing the value by 1 turn.
+    /// According to CSS Content Module Level 3:
+    /// The computed value of the property is calculated by rounding the specified angle
+    /// to the nearest quarter-turn, rounding away from 0, then moduloing the value by 1 turn.
+    /// Note that we use "rounding half up" instead of "rounding away from 0" for now, just
+    /// to align with Gecko, since Gecko is the only vendor implementing image-orientation.
     #[inline]
     fn normalize_angle(angle: &computed::Angle) -> computed::Angle {
         let radians = angle.radians();
-        let rounded_quarter_turns = (4.0 * radians / TWO_PI).round();
-        let normalized_quarter_turns = (rounded_quarter_turns % 4.0 + 4.0) % 4.0;
-        let normalized_radians = normalized_quarter_turns/4.0 * TWO_PI;
-        computed::Angle::from_radians(normalized_radians)
+        let rounded_radians = (radians % TWO_PI + TWO_PI) % TWO_PI;
+        if rounded_radians < 0.25 * PI {
+            computed::Angle::from_radians(0. * PI)
+        } else if rounded_radians < 0.75 * PI {
+            computed::Angle::from_radians(0.5 * PI)
+        } else if rounded_radians < 1.25 * PI {
+            computed::Angle::from_radians(1. * PI)
+        } else if rounded_radians < 1.75 * PI {
+            computed::Angle::from_radians(1.5 * PI)
+        } else {
+            computed::Angle::from_radians(0. * PI)
+        }
     }
 
     impl ToComputedValue for SpecifiedValue {
@@ -199,21 +209,23 @@ ${helpers.single_keyword("image-rendering",
         }
     }
 
+    // from-image | <angle> | [<angle>? flip]
     pub fn parse(context: &ParserContext, input: &mut Parser) -> Result<SpecifiedValue, ()> {
         if input.try(|input| input.expect_ident_matching("from-image")).is_ok() {
             // Handle from-image
             Ok(SpecifiedValue { angle: None, flipped: false })
+        } else if input.try(|input| input.expect_ident_matching("flip")).is_ok() {
+            // Handle flip
+            Ok(SpecifiedValue { angle: Some(Angle::zero()), flipped: true })
         } else {
-            // Handle <angle> | <angle>? flip
+            // Handle <angle> | <angle> flip
             let angle = input.try(|input| Angle::parse(context, input)).ok();
-            let flipped = input.try(|input| input.expect_ident_matching("flip")).is_ok();
-            let explicit_angle = if angle.is_none() && !flipped {
-                Some(Angle::zero())
-            } else {
-                angle
-            };
+            if angle.is_none() {
+                return Err(());
+            }
 
-            Ok(SpecifiedValue { angle: explicit_angle, flipped: flipped })
+            let flipped = input.try(|input| input.expect_ident_matching("flip")).is_ok();
+            Ok(SpecifiedValue { angle: angle, flipped: flipped })
         }
     }
 </%helpers:longhand>
