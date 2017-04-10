@@ -232,12 +232,7 @@ to mochitest command.
   * font-language-override property bug 1347821
     * test_value_storage.html `font-language-override` [16]
   * image-orientation property
-    * test_compute_data_with_start_struct.html `image-orientation` [2]
-    * test_inherit_computation.html `image-orientation` [4]
-    * test_inherit_storage.html `image-orientation` [4]
-    * test_initial_computation.html `image-orientation` [2]
-    * test_initial_storage.html `image-orientation` [2]
-    * test_value_storage.html `image-orientation` [80]
+    * test_value_storage.html `image-orientation` [40]
   * flexbox / grid position properties servo/servo#15001
     * test_inherit_storage.html `align-` [3]
     * ... `justify-` [3]
@@ -419,9 +414,6 @@ to mochitest command.
 ## Need Gecko change
 
 * Servo is correct but Gecko is wrong
-  * unitless zero as angle bug 1234357
-    * test_property_syntax_errors.html `linear-gradient(0,` [10]
-    * ... `hue-rotate(0)` [6]
   * flex-basis should be 0px when omitted in flex shorthand bug 1331530
     * test_flexbox_flex_shorthand.html `flex-basis` [10]
 
