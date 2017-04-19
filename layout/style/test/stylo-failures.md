@@ -245,11 +245,6 @@ to mochitest command.
     * test_value_storage.html `'background'` [20]
     * ... `/ auto none` [38]
     * ... `/ auto repeat` [19]
-  * border shorthands do not reset border-image servo/servo#15202
-    * test_shorthand_property_getters.html `border-image` [1]
-    * test_inherit_storage.html `for property 'border-image-` [5]
-    * test_initial_storage.html `for property 'border-image-` [10]
-    * test_value_storage.html `(for 'border-image-` [60]
   * -moz-alt-content parsing is wrong: servo/servo#15726
     * test_property_syntax_errors.html `-moz-alt-content` [4]
   * mask shorthand servo/servo#15772
