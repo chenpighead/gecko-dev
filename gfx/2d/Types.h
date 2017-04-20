@@ -373,6 +373,7 @@ namespace mozilla {
 
 // Side constants for use in various places.
 enum Side { eSideTop, eSideRight, eSideBottom, eSideLeft };
+constexpr int eSideCount = 4;
 
 enum SideBits {
   eSideBitsNone   = 0,

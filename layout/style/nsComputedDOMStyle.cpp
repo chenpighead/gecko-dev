@@ -5341,7 +5341,7 @@ nsComputedDOMStyle::GetBorderColorsFor(mozilla::Side aSide)
 {
   const nsStyleBorder *border = StyleBorder();
 
-  if (border->mBorderColors) {
+  if (!border->mBorderColors.IsEmpty()) {
     nsBorderColors* borderColors = border->mBorderColors[aSide];
     if (borderColors) {
       RefPtr<nsDOMCSSValueList> valueList = GetROCSSValueList(false);

@@ -1145,10 +1145,9 @@ struct MOZ_NEEDS_MEMMOVABLE_MEMBERS nsStyleBorder
   nsChangeHint CalcDifference(const nsStyleBorder& aNewData) const;
 
   void EnsureBorderColors() {
-    if (!mBorderColors) {
-      mBorderColors = new nsBorderColors*[4];
-      if (mBorderColors) {
-        for (int32_t i = 0; i < 4; i++) {
+    if (mBorderColors.IsEmpty()) {
+      if (mBorderColors.AppendElements(mozilla::eSideCount)) {
+        for (int32_t i = 0; i < mozilla::eSideCount; i++) {
           mBorderColors[i] = nullptr;
         }
       }
@@ -1156,7 +1155,7 @@ struct MOZ_NEEDS_MEMMOVABLE_MEMBERS nsStyleBorder
   }
 
   void ClearBorderColors(mozilla::Side aSide) {
-    if (mBorderColors && mBorderColors[aSide]) {
+    if (!mBorderColors.IsEmpty() && mBorderColors[aSide]) {
       delete mBorderColors[aSide];
       mBorderColors[aSide] = nullptr;
     }
@@ -1235,7 +1234,7 @@ struct MOZ_NEEDS_MEMMOVABLE_MEMBERS nsStyleBorder
 
   void GetCompositeColors(int32_t aIndex, nsBorderColors** aColors) const
   {
-    if (!mBorderColors) {
+    if (mBorderColors.IsEmpty()) {
       *aColors = nullptr;
     } else {
       *aColors = mBorderColors[aIndex];
@@ -1266,7 +1265,7 @@ struct MOZ_NEEDS_MEMMOVABLE_MEMBERS nsStyleBorder
   }
 
 public:
-  nsBorderColors** mBorderColors;     // [reset] composite (stripe) colors
+  nsTArray<nsBorderColors*> mBorderColors; // [reset] composite (stripe) colors
   nsStyleCorners mBorderRadius;       // [reset] coord, percent
   nsStyleImage   mBorderImageSource;  // [reset]
   nsStyleSides   mBorderImageSlice;   // [reset] factor, percent

@@ -2038,11 +2038,13 @@ IsOpaqueBorderEdge(const nsStyleBorder& aBorder, mozilla::Side aSide)
 static bool
 IsOpaqueBorder(const nsStyleBorder& aBorder)
 {
-  if (aBorder.mBorderColors)
+  if (!aBorder.mBorderColors.IsEmpty()) {
     return false;
+  }
   NS_FOR_CSS_SIDES(i) {
-    if (!IsOpaqueBorderEdge(aBorder, i))
+    if (!IsOpaqueBorderEdge(aBorder, i)) {
       return false;
+    }
   }
   return true;
 }

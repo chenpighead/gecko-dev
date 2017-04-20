@@ -301,8 +301,7 @@ nsStylePadding::CalcDifference(const nsStylePadding& aNewData) const
 }
 
 nsStyleBorder::nsStyleBorder(const nsPresContext* aContext)
-  : mBorderColors(nullptr)
-  , mBorderImageFill(NS_STYLE_BORDER_IMAGE_SLICE_NOFILL)
+  : mBorderImageFill(NS_STYLE_BORDER_IMAGE_SLICE_NOFILL)
   , mBorderImageRepeatH(NS_STYLE_BORDER_IMAGE_REPEAT_STRETCH)
   , mBorderImageRepeatV(NS_STYLE_BORDER_IMAGE_REPEAT_STRETCH)
   , mFloatEdge(StyleFloatEdge::ContentBox)
@@ -349,8 +348,7 @@ nsBorderColors::Clone(bool aDeep) const
 }
 
 nsStyleBorder::nsStyleBorder(const nsStyleBorder& aSrc)
-  : mBorderColors(nullptr)
-  , mBorderRadius(aSrc.mBorderRadius)
+  : mBorderRadius(aSrc.mBorderRadius)
   , mBorderImageSource(aSrc.mBorderImageSource)
   , mBorderImageSlice(aSrc.mBorderImageSlice)
   , mBorderImageWidth(aSrc.mBorderImageWidth)
@@ -365,7 +363,7 @@ nsStyleBorder::nsStyleBorder(const nsStyleBorder& aSrc)
   , mTwipsPerPixel(aSrc.mTwipsPerPixel)
 {
   MOZ_COUNT_CTOR(nsStyleBorder);
-  if (aSrc.mBorderColors) {
+  if (!aSrc.mBorderColors.IsEmpty()) {
     EnsureBorderColors();
     for (int32_t i = 0; i < 4; i++) {
       if (aSrc.mBorderColors[i]) {
@@ -385,11 +383,10 @@ nsStyleBorder::nsStyleBorder(const nsStyleBorder& aSrc)
 nsStyleBorder::~nsStyleBorder()
 {
   MOZ_COUNT_DTOR(nsStyleBorder);
-  if (mBorderColors) {
+  if (!mBorderColors.IsEmpty()) {
     for (int32_t i = 0; i < 4; i++) {
       delete mBorderColors[i];
     }
-    delete [] mBorderColors;
   }
 }
 
@@ -480,7 +477,7 @@ nsStyleBorder::CalcDifference(const nsStyleBorder& aNewData) const
   }
 
   if (mBorderRadius != aNewData.mBorderRadius ||
-      !mBorderColors != !aNewData.mBorderColors) {
+      mBorderColors.IsEmpty() != aNewData.mBorderColors.IsEmpty()) {
     return nsChangeHint_RepaintFrame;
   }
 
@@ -497,7 +494,7 @@ nsStyleBorder::CalcDifference(const nsStyleBorder& aNewData) const
 
   // Note that at this point if mBorderColors is non-null so is
   // aNewData.mBorderColors
-  if (mBorderColors) {
+  if (!mBorderColors.IsEmpty()) {
     NS_FOR_CSS_SIDES(ix) {
       if (!nsBorderColors::Equal(mBorderColors[ix],
                                  aNewData.mBorderColors[ix])) {
