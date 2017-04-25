@@ -386,6 +386,10 @@ function ignoreContents(entry)
         /LookAndFeel::GetColor/,
         "Gecko_CopyStyleContentsFrom",
         "Gecko_CSSValue_SetAbsoluteLength",
+        "Gecko_EnsureMozBorderColors",
+        "Gecko_ClearMozBorderColors",
+        "Gecko_AppendMozBorderColors",
+        "Gecko_CopyMozBorderColors",
     ];
     if (entry.matches(whitelist))
         return true;
