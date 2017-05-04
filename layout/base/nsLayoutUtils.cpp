@@ -9194,7 +9194,7 @@ nsLayoutUtils::GetCumulativeApzCallbackTransform(nsIFrame* aFrame)
 nsLayoutUtils::SupportsServoStyleBackend(nsIDocument* aDocument)
 {
   return StyloEnabled() &&
-         aDocument->IsHTMLOrXHTML() &&
+         (aDocument->IsHTMLOrXHTML() || aDocument->IsSVGDocument()) &&
          static_cast<nsDocument*>(aDocument)->IsContentDocument();
 }
 
